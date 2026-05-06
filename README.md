@@ -4,6 +4,9 @@ Browser-based crypto tax tool that fetches on-chain transactions, applies FIFO c
 
 **Live demo:** [nnamdert.page/cryptotax.html](https://nnamdert.page/cryptotax.html)
 
+<img width="1845" height="832" alt="CryptoTaxScreenshot_01" src="https://github.com/user-attachments/assets/8fc38eb3-4378-4d9d-afa4-200a182b9e3b" />
+
+
 ## What It Does
 
 1. **Fetches transactions** from Ethereum (Etherscan V2), BSC (MegaNode), and Solana (Helius) using your own free API keys
@@ -53,6 +56,8 @@ Solana support includes Jupiter V2 token name resolution with a reserved-symbol 
    - **TurboTax Custom CSV** — all years, importable via TurboTax's "Other (CSV)" option
    - **Raw Transactions CSV** — full dataset for your records
    - **Needs Review CSV** — rows requiring manual attention
+
+<img width="1574" height="991" alt="form8949Screenshot_01" src="https://github.com/user-attachments/assets/279e62f7-ae45-461f-a4fc-2700d39be605" />
 
 ## Manual Override System
 
