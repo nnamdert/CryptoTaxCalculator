@@ -12,6 +12,34 @@ furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
+ATTRIBUTION REQUIREMENTS
+
+The following attribution requirements apply to any use, modification,
+redistribution, or sale of this Software, in whole or in part:
+
+1. ORIGINAL CREDIT. All copies, forks, modifications, derivative works, and
+   redistributions — whether free or commercial — must include clear and
+   visible attribution to the original author: "nnamdert". This attribution
+   must not be removed, obscured, or made less prominent than other credits.
+
+2. COPYRIGHT NOTICE. The copyright notice "Copyright (c) 2025 nnamdert" must
+   be retained in all copies of the source code, including modified versions.
+   If the source is minified, bundled, or compiled, the copyright notice must
+   appear in an accompanying LICENSE, NOTICE, or README file distributed with
+   the work.
+
+3. LICENSE RETENTION. This license text, including these Attribution
+   Requirements, must be included in its entirety with any distribution of the
+   Software or derivative works. It may not be altered, truncated, or replaced
+   with a different license without written permission from the original author.
+
+4. MODIFICATIONS. Modified versions must be clearly marked as modified and must
+   not be represented as the original work. Attribution to the original author
+   must still appear alongside any credit to the modifier.
+
+5. COMMERCIAL USE. Commercial use, resale, and sublicensing are permitted
+   provided all of the above attribution requirements are met.
+
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
