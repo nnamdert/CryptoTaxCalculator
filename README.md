@@ -6,7 +6,6 @@ Browser-based crypto tax tool that fetches on-chain transactions, applies FIFO c
 
 <img width="1845" height="832" alt="CryptoTaxScreenshot_01" src="https://github.com/user-attachments/assets/8fc38eb3-4378-4d9d-afa4-200a182b9e3b" />
 
-
 ## What It Does
 
 1. **Fetches transactions** from Ethereum (Etherscan V2), BSC (MegaNode), and Solana (Helius) using your own free API keys
@@ -56,6 +55,8 @@ Solana support includes Jupiter V2 token name resolution with a reserved-symbol 
    - **TurboTax Custom CSV** — all years, importable via TurboTax's "Other (CSV)" option
    - **Raw Transactions CSV** — full dataset for your records
    - **Needs Review CSV** — rows requiring manual attention
+  
+<img width="1069" height="150" alt="Exports and Help" src="https://github.com/user-attachments/assets/55304380-07b2-4494-a672-bea74413126f" />
 
 <img width="1574" height="991" alt="form8949Screenshot_01" src="https://github.com/user-attachments/assets/279e62f7-ae45-461f-a4fc-2700d39be605" />
 
@@ -73,6 +74,8 @@ For disposals where FIFO ran out of acquisition lots (e.g., tokens acquired from
 
 Bulk action: **"Zero basis all visible"** applies zero basis to every row above the dollar threshold in one click.
 
+<img width="1750" height="867" alt="Manual Cost Basis Overrides" src="https://github.com/user-attachments/assets/0e469263-3bce-4c0d-b0de-f8a4acc4da81" />
+
 ### Phase 3: Unpriced Transactions
 
 For rows that couldn't be priced at all — neither CryptoCompare nor swap-pair derivation could attach a USD value. Two flavors:
@@ -83,6 +86,9 @@ For rows that couldn't be priced at all — neither CryptoCompare nor swap-pair 
 Both support zero values (zero basis for receipts, zero proceeds for disposals).
 
 Bulk action: **"Zero all unpriced"** applies the conservative treatment to every unpriced row.
+
+<img width="1759" height="862" alt="Unpriced Transactions" src="https://github.com/user-attachments/assets/b49cd9f5-875f-4c45-9d49-e205cfae6612" />
+
 
 ### Override Persistence
 
@@ -125,6 +131,20 @@ The HTML file can be downloaded and run from `file:///` with full functionality 
 - **Tax year filtering**: 8949 export filters to the selected year; TurboTax export includes all years for FIFO carryover
 - **Group-aware overrides**: when multiple rows share the same override key (e.g., a Solana transaction with multiple SOL outflows), the override value is distributed proportionally
 
+<img width="1774" height="839" alt="Use Screenshot" src="https://github.com/user-attachments/assets/e3bb8e54-c95f-4c50-84a3-77cf917d92cc" />
+
+## Run Log (Real-time)
+
+<img width="1376" height="438" alt="Run Log" src="https://github.com/user-attachments/assets/7cf9a198-7ff0-4c23-a797-541e1aef14e4" />
+
+## Running Transactions List
+
+<img width="1729" height="779" alt="Transactions" src="https://github.com/user-attachments/assets/8042aa2f-3443-4804-903f-f14ab14b9086" />
+
+## Realized Gains
+
+<img width="1738" height="706" alt="Realized Gains" src="https://github.com/user-attachments/assets/526fc7c6-253d-4e59-96bf-2dc3830a14c1" />
+
 ## Limitations
 
 - **No exchange imports** — only on-chain data. If you traded on Coinbase, MEXC, Binance, etc., those trades aren't captured. Use the manual override system to fill in basis from exchange CSV exports.
@@ -155,6 +175,12 @@ Not supported in v1. Currently treated as zero-basis acquisitions.
 **Q: How do I add a new token to the known-assets list?**
 
 Edit the `KNOWN_ASSETS` object near the top of the `<script>` block. Add the contract address (lowercase for EVM, base58 for Solana), a `priceId` string matching an entry in `CC_SYMBOLS`, and the token's decimals. Save and reload.
+
+<img width="1751" height="848" alt="Exports and Help" src="https://github.com/user-attachments/assets/3ed48831-2226-4281-b35b-5fab741497f3" />
+
+## HELP and FAQ
+
+<img width="1743" height="862" alt="FAQ" src="https://github.com/user-attachments/assets/d529b499-db7d-47c8-9e43-1aab4865c180" />
 
 ## Contributing
 
