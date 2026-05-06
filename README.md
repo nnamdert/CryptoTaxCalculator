@@ -27,6 +27,9 @@ Solana support includes Jupiter V2 token name resolution with a reserved-symbol 
 
 ## Quick Start
 
+> **New to this?** See the [step-by-step Setup Guide](SETUP_GUIDE.md) with screenshots for downloading, saving, and running the tool — even if you've never worked with HTML files before.
+
+1. **Get free API keys** (links are in the tool's config panel):
 1. **Get free API keys** (links are in the tool's config panel):
    - [Etherscan V2](https://etherscan.io/apis) — for ETH transactions
    - [MegaNode / NodeReal](https://dashboard.nodereal.io/) — for BSC transactions
