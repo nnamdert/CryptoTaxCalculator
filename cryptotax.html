@@ -1,0 +1,2657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crypto Tax FIFO Tool</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #1a1f2e; --panel2: #232938; --border: #2d3548;
+    --text: #e6e9ef; --muted: #8a93a6; --accent: #4a9eff; --accent2: #6fcf97;
+    --warn: #f2c94c; --err: #eb5757; --ok: #6fcf97;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0 auto; max-width: 1400px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); padding: 20px; line-height: 1.5;
+  }
+  h1 { margin: 0 0 4px; font-size: 26px; }
+  h2 { font-size: 18px; margin: 24px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  h3 { font-size: 15px; margin: 16px 0 8px; color: var(--accent2); }
+  .subtitle { color: var(--muted); margin-bottom: 20px; font-size: 13px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  .col { flex: 1; min-width: 260px; }
+  label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; flex-wrap: wrap; }
+  label .get-key { margin-left: auto; color: var(--accent); text-decoration: none; font-size: 11px; text-transform: none; letter-spacing: 0; padding: 2px 8px; border: 1px solid var(--accent); border-radius: 3px; }
+  label .get-key:hover { background: var(--accent); color: #fff; }
+  input, textarea, select { width: 100%; background: var(--panel2); border: 1px solid var(--border); color: var(--text); padding: 9px 11px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  textarea { resize: vertical; min-height: 100px; }
+  button { background: var(--accent); color: #fff; border: none; padding: 10px 20px; border-radius: 4px; font-size: 14px; font-weight: 600; cursor: pointer; margin-right: 8px; margin-bottom: 4px; }
+  button:hover { filter: brightness(1.1); }
+  button.secondary { background: var(--panel2); border: 1px solid var(--border); color: var(--text); }
+  .help-btn { background: var(--panel2); border: 1px solid var(--border); color: var(--accent); width: 18px; height: 18px; border-radius: 50%; padding: 0; margin: 0; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+  .help-btn:hover { background: var(--accent); color: #fff; }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+  #log { background: #000; border: 1px solid var(--border); padding: 10px; border-radius: 4px; font-family: ui-monospace, monospace; font-size: 12px; max-height: 260px; overflow-y: auto; white-space: pre-wrap; }
+  .log-info { color: var(--muted); } .log-ok { color: var(--ok); } .log-warn { color: var(--warn); } .log-err { color: var(--err); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { background: var(--panel2); color: var(--muted); text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; position: sticky; top: 0; }
+  td.num { text-align: right; font-family: ui-monospace, monospace; }
+  .badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; text-transform: uppercase; cursor: help; }
+  .badge-ok { background: rgba(111,207,151,0.15); color: var(--ok); }
+  .badge-warn { background: rgba(242,201,76,0.15); color: var(--warn); }
+  .badge-muted { background: var(--panel2); color: var(--muted); }
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .stat { background: var(--panel2); padding: 12px; border-radius: 4px; }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+  .stat-value { font-size: 20px; font-weight: 600; margin-top: 4px; font-family: ui-monospace, monospace; }
+  .stat-value.pos { color: var(--ok); } .stat-value.neg { color: var(--err); }
+  .tx-table-wrap { max-height: 500px; overflow: auto; border: 1px solid var(--border); border-radius: 4px; }
+  /* Override table: fixed layout with explicit column widths so the action dropdown
+     doesn't push the basis input out of view. Date/asset/wallet are compact; qty
+     and proceeds get more room for the numbers; action and basis are constrained. */
+  #overrideTable { table-layout: fixed; }
+  #overrideTable th:nth-child(1), #overrideTable td:nth-child(1) { width: 95px; }   /* Date */
+  #overrideTable th:nth-child(2), #overrideTable td:nth-child(2) { width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }  /* Asset */
+  #overrideTable th:nth-child(3), #overrideTable td:nth-child(3) { width: auto; }   /* Qty (flex) */
+  #overrideTable th:nth-child(4), #overrideTable td:nth-child(4) { width: 110px; }  /* Proceeds */
+  #overrideTable th:nth-child(5), #overrideTable td:nth-child(5) { width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }  /* Wallet */
+  #overrideTable th:nth-child(6), #overrideTable td:nth-child(6) { width: 130px; }  /* Action */
+  #overrideTable th:nth-child(7), #overrideTable td:nth-child(7) { width: 110px; }  /* Basis */
+  #overrideTable select.ov-action { width: 100%; padding: 4px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font-size: 11px; }
+  #overrideTable input.ov-basis { width: 100%; box-sizing: border-box; }
+  /* Unpriced table: same layout strategy. 7 columns: date, asset, type, qty, wallet, action, value */
+  #unpricedTable { table-layout: fixed; }
+  #unpricedTable th:nth-child(1), #unpricedTable td:nth-child(1) { width: 95px; }   /* Date */
+  #unpricedTable th:nth-child(2), #unpricedTable td:nth-child(2) { width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }  /* Asset */
+  #unpricedTable th:nth-child(3), #unpricedTable td:nth-child(3) { width: 60px; }   /* Type (buy/sell badge) */
+  #unpricedTable th:nth-child(4), #unpricedTable td:nth-child(4) { width: auto; }   /* Qty */
+  #unpricedTable th:nth-child(5), #unpricedTable td:nth-child(5) { width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }  /* Wallet */
+  #unpricedTable th:nth-child(6), #unpricedTable td:nth-child(6) { width: 150px; }  /* Action */
+  #unpricedTable th:nth-child(7), #unpricedTable td:nth-child(7) { width: 110px; }  /* Value */
+  #unpricedTable select.up-action { width: 100%; padding: 4px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font-size: 11px; }
+  #unpricedTable input.up-value { width: 100%; box-sizing: border-box; padding: 4px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
+  .filters { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .filters select { width: auto; }
+  code { background: var(--panel2); padding: 1px 5px; border-radius: 3px; font-size: 11px; color: var(--accent); font-family: ui-monospace, monospace; }
+  .disclaimer { background: rgba(242,201,76,0.08); border-left: 3px solid var(--warn); padding: 10px 14px; border-radius: 4px; font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+  .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.75); display: none; align-items: flex-start; justify-content: center; z-index: 1000; padding: 40px 20px; overflow-y: auto; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; max-width: 720px; width: 100%; padding: 24px 28px; position: relative; }
+  .modal h2 { margin-top: 0; border-bottom: 1px solid var(--border); padding-bottom: 10px; font-size: 20px; }
+  .modal h3 { color: var(--accent2); margin-top: 18px; font-size: 14px; }
+  .modal p, .modal li { font-size: 13px; line-height: 1.65; }
+  .modal ul, .modal ol { padding-left: 22px; }
+  .modal li { margin-bottom: 4px; }
+  .modal-close { position: absolute; top: 14px; right: 14px; background: var(--panel2); border: 1px solid var(--border); color: var(--text); width: 28px; height: 28px; border-radius: 50%; font-size: 16px; cursor: pointer; padding: 0; margin: 0; line-height: 1; }
+  .callout { background: rgba(74,158,255,0.08); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 4px; font-size: 12px; color: var(--text); margin: 12px 0; }
+  .callout.warn { background: rgba(242,201,76,0.08); border-left-color: var(--warn); }
+  details.help-section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-top: 16px; padding: 0; }
+  details.help-section summary { cursor: pointer; padding: 16px 20px; font-size: 16px; font-weight: 600; color: var(--accent); list-style: none; user-select: none; display: flex; align-items: center; gap: 10px; }
+  details.help-section summary::-webkit-details-marker { display: none; }
+  details.help-section summary::before { content: '＋'; display: inline-block; width: 20px; font-weight: 700; color: var(--accent); text-align: center; }
+  details.help-section[open] summary::before { content: '−'; }
+  details.help-section[open] summary { border-bottom: 1px solid var(--border); }
+  .help-body { padding: 16px 28px 28px; }
+  .help-body h3 { margin-top: 26px; color: var(--accent2); border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+  .help-body h3:first-child { margin-top: 0; }
+  .help-body p, .help-body li { font-size: 13px; line-height: 1.65; }
+  .help-body ol, .help-body ul { padding-left: 22px; }
+  pre.codeblock { background: var(--panel2); padding: 10px; border-radius: 4px; font-size: 12px; overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<h1>Crypto Tax FIFO Tool</h1>
+<div class="subtitle">On-chain transaction consolidator with FIFO cost basis and Form 8949 export</div>
+
+<div class="disclaimer">
+  <strong>Not tax advice.</strong> This tool generates best-effort cost basis reports from on-chain data.
+  Unknown tokens, DEX swaps with no price data, and cost basis gaps are flagged <strong>NEEDS REVIEW</strong>
+  and must be resolved manually before filing. Always have a CPA review the output.
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0;border:none;">
+    1. Configuration
+    <button class="help-btn" onclick="showHelp('config')" title="Help">?</button>
+  </h2>
+
+  <div class="row">
+    <div class="col">
+      <label>Tax Year <button class="help-btn" onclick="showHelp('taxYear')">?</button></label>
+      <input type="number" id="taxYear" value="2025" min="2019" max="2030">
+      <div class="hint">The year you're filing for. FIFO uses full history regardless.</div>
+    </div>
+    <div class="col">
+      <label>Cost Basis Method <button class="help-btn" onclick="showHelp('method')">?</button></label>
+      <select id="method"><option value="FIFO">FIFO (standard)</option></select>
+      <div class="hint">IRS default. Safest choice.</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <label>
+        Etherscan V2 Key — ETH
+        <button class="help-btn" onclick="showHelp('ethKey')">?</button>
+        <a href="https://etherscan.io/apis" target="_blank" rel="noopener" class="get-key">Get Key ↗</a>
+      </label>
+      <input type="text" id="ethKey" placeholder="YourEtherscanApiKey">
+      <div class="hint">Free: 5 req/sec, 100k/day. Ethereum mainnet.</div>
+    </div>
+    <div class="col">
+      <label>
+        MegaNode Key — BSC
+        <button class="help-btn" onclick="showHelp('bscKey')">?</button>
+        <a href="https://dashboard.nodereal.io/" target="_blank" rel="noopener" class="get-key">Get Key ↗</a>
+      </label>
+      <input type="text" id="bscKey" placeholder="YourNodeRealApiKey">
+      <div class="hint">Free tier. Replaces BscScan (deprecated Dec 2025).</div>
+    </div>
+    <div class="col">
+      <label>
+        Helius Key — SOL
+        <button class="help-btn" onclick="showHelp('solKey')">?</button>
+        <a href="https://dashboard.helius.dev/" target="_blank" rel="noopener" class="get-key">Get Key ↗</a>
+      </label>
+      <input type="text" id="solKey" placeholder="YourHeliusApiKey">
+      <div class="hint">Free: 10 req/sec, 1M credits/mo. Parses Jupiter swaps.</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <label>
+        CryptoCompare Key — Prices
+        <button class="help-btn" onclick="showHelp('ccKey')">?</button>
+        <a href="https://www.cryptocompare.com/cryptopian/api-keys" target="_blank" rel="noopener" class="get-key">Get Key ↗</a>
+      </label>
+      <input type="text" id="ccKey" placeholder="64-character hex API key">
+      <div class="hint"><strong>Required for pricing.</strong> Free tier with full historical data for major coins (CoinGecko's free tier is limited to 365 days). Signup is fast — no credit card.
+        <button id="testCcBtn" class="secondary" style="margin-left:8px;padding:3px 10px;font-size:11px;">Test Key</button>
+      </div>
+    </div>
+  </div>
+
+  <label>Wallet Addresses <button class="help-btn" onclick="showHelp('addresses')">?</button></label>
+  <textarea id="addresses" placeholder="eth:0x1234...abcd
+bsc:0x1234...abcd
+sol:ABCDEFghijk..."></textarea>
+  <div class="hint">One per line. Format: <code>chain:address</code> (chain = <code>eth</code>, <code>bsc</code>, or <code>sol</code>). List every wallet you own so internal transfers between them aren't counted as taxable.</div>
+
+  <div style="margin-top:16px;">
+    <button id="runBtn">▶ Fetch &amp; Calculate</button>
+    <button id="saveConfigBtn" class="secondary">💾 Save Config</button>
+    <button id="loadConfigBtn" class="secondary">📂 Load Config</button>
+    <button id="clearCacheBtn" class="secondary">🗑 Clear Cache</button>
+  </div>
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0;border:none;">2. Run Log <button class="help-btn" onclick="showHelp('log')">?</button></h2>
+  <div id="log">Ready. Fill in the configuration above and click <strong>Fetch &amp; Calculate</strong>.</div>
+</div>
+
+<div class="panel" id="resultsPanel" style="display:none;">
+  <h2 style="margin-top:0;border:none;">3. Summary <button class="help-btn" onclick="showHelp('summary')">?</button></h2>
+  <div class="summary" id="summary"></div>
+
+  <h2>Transactions <button class="help-btn" onclick="showHelp('txTable')">?</button></h2>
+  <div class="filters">
+    <select id="filterStatus"><option value="">All statuses</option><option value="ok">OK</option><option value="review">Needs Review</option><option value="internal">Internal Transfer</option></select>
+    <select id="filterChain"><option value="">All chains</option><option value="eth">ETH</option><option value="bsc">BSC</option><option value="sol">SOL</option></select>
+    <select id="filterType"><option value="">All types</option><option value="buy">Buy / In</option><option value="sell">Sell / Out</option></select>
+  </div>
+  <div class="tx-table-wrap">
+    <table id="txTable">
+      <thead><tr><th>Date</th><th>Chain</th><th>Wallet</th><th>Type</th><th>Asset</th><th class="num">Qty</th><th class="num">USD/unit</th><th class="num">USD value</th><th>Status</th><th>Note</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <h2>Realized Gains (FIFO) <button class="help-btn" onclick="showHelp('gainsTable')">?</button></h2>
+  <div class="tx-table-wrap">
+    <table id="gainsTable">
+      <thead><tr><th>Asset</th><th>Qty</th><th>Acquired</th><th>Sold</th><th class="num">Basis</th><th class="num">Proceeds</th><th class="num">Gain/Loss</th><th>Term</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <h2>🔧 Manual Cost Basis Overrides <button class="help-btn" onclick="showHelp('overrides')">?</button></h2>
+  <div id="overrideExplain" style="font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.5;">
+    Disposals where FIFO ran out of acquisition lots. The tool can't know what you originally paid — only your records can.
+    Sorted by approximate proceeds (impact). Set a basis for the big-dollar rows; ignore the dust.
+    Overrides persist across runs in your browser.<br>
+    <strong>Actions:</strong> <em>Ignore</em> = skip from 8949 (default) · <em>Set basis</em> = enter total $ you paid (creates phantom lot) · <em>Zero basis</em> = treat full proceeds as gain (max tax, IRS-conservative)
+  </div>
+  <div id="overrideControls" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+    <label style="font-size:13px;">Hide rows under $<input type="number" id="overrideThreshold" value="5" min="0" step="1" style="width:60px;padding:4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;" oninput="renderOverridePanel()"></label>
+    <span id="overrideStats" style="font-size:13px;color:var(--muted);"></span>
+    <button id="applyOverridesBtn" onclick="applyOverridesAndRerun()" style="background:var(--accent);">💾 Save &amp; Re-Apply</button>
+    <button onclick="bulkZeroAllOrphanDisposals()" style="background:var(--bg);border:1px solid var(--border);" title="Zero basis for all visible rows above the dollar threshold. Use when you can't reconstruct cost basis from your records.">⚡ Zero basis all visible</button>
+    <button onclick="clearStaleOverrides()" style="background:var(--bg);border:1px solid var(--border);" title="Remove only overrides that FIFO is not currently using. Preserves your active overrides — safe to use anytime.">🧹 Clear stale only</button>
+    <button onclick="if(clearAllOverrides()){rerunPipelineWithCurrentOverrides();}" style="background:var(--bg);border:1px solid var(--err);color:var(--err);" title="DESTRUCTIVE: removes ALL overrides including active ones. Only use if you want to start over.">⚠ Clear All Overrides</button>
+  </div>
+  <div class="tx-table-wrap">
+    <table id="overrideTable">
+      <thead><tr>
+        <th>Date</th><th>Asset</th><th class="num">Qty</th><th class="num">Approx. Proceeds</th>
+        <th>Wallet</th><th>Action</th><th class="num">Basis $</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <h2>📥 Unpriced Transactions <button class="help-btn" onclick="showHelp('unpriced')">?</button></h2>
+  <div id="unpricedExplain" style="font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.5;">
+    Rows the tool couldn't price at all — neither CryptoCompare nor swap-pair derivation could attach a USD value.
+    These come in two flavors: <strong>orphan receipts</strong> (incoming tokens like airdrops or tip.cc deposits — set the cost basis you paid)
+    and <strong>unpriced disposals</strong> (memecoin sells where neither side could be priced — set the proceeds you received).
+    Currently excluded from the 8949. Use this panel to make them filing-accurate.<br>
+    <strong>Actions:</strong> <em>Ignore</em> = exclude from 8949 (default) · <em>Set basis/proceeds</em> = enter the USD value · <em>Zero</em> = treat as $0 (IRS-conservative)
+  </div>
+  <div id="unpricedControls" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+    <span id="unpricedStats" style="font-size:13px;color:var(--muted);"></span>
+    <button onclick="bulkZeroAllUnpriced()" style="background:var(--bg);border:1px solid var(--border);" title="Zero out all unpriced rows. Receipts get zero basis; disposals get zero proceeds.">⚡ Zero all unpriced</button>
+  </div>
+  <div class="tx-table-wrap">
+    <table id="unpricedTable">
+      <thead><tr>
+        <th>Date</th><th>Asset</th><th>Type</th><th class="num">Qty</th>
+        <th>Wallet</th><th>Action</th><th class="num">Value $</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <h2>Exports <button class="help-btn" onclick="showHelp('exports')">?</button></h2>
+  <button id="export8949">📄 Form 8949 CSV</button>
+  <button id="exportTurboTax">🟢 TurboTax Custom CSV</button>
+  <button id="exportRaw">📋 Raw Transactions CSV</button>
+  <button id="exportReview">⚠ Needs-Review CSV</button>
+</div>
+
+<details class="help-section">
+<summary>Full Help &amp; Walkthrough</summary>
+<div class="help-body">
+
+<h3>Quick Start (3 Steps)</h3>
+<ol>
+  <li><strong>Sign up for API keys</strong> (all free): Etherscan V2, MegaNode, Helius. Use the "Get Key ↗" buttons next to each field — they open the signup pages in new tabs.</li>
+  <li><strong>Paste your wallet addresses</strong> into the textarea, one per line, prefixed with <code>eth:</code>, <code>bsc:</code>, or <code>sol:</code>.</li>
+  <li><strong>Click Fetch &amp; Calculate</strong>. Wait 1–15 minutes depending on transaction volume.</li>
+</ol>
+
+<h3>Why Three Different APIs</h3>
+<p>Each blockchain has its own explorer. A single universal crypto API doesn't exist on free tiers. Good news: every key is <strong>site-wide</strong>, not per-wallet. One Etherscan key reads every public Ethereum address.</p>
+<ul>
+  <li><strong>Etherscan V2</strong> → Ethereum mainnet history</li>
+  <li><strong>MegaNode (BSCTrace)</strong> → BNB Smart Chain history. Required because BscScan was deprecated December 18, 2025 and BSC is no longer in Etherscan's free tier.</li>
+  <li><strong>Helius</strong> → Solana history. Auto-parses Jupiter/Raydium swaps into clean data — essential for memecoin traders.</li>
+  <li><strong>CoinGecko</strong> → historical USD prices. No key needed.</li>
+</ul>
+
+<h3>Getting API Keys — Detailed Walkthrough</h3>
+
+<p><strong>Etherscan V2 (Ethereum)</strong></p>
+<ol>
+  <li>Click the "Get Key ↗" link next to the Etherscan field.</li>
+  <li>Register a free account with email. Verify email.</li>
+  <li>Log in → profile icon (top right) → <strong>API Keys</strong>.</li>
+  <li>Click <strong>+ Add</strong>, name it "Tax Tool", create.</li>
+  <li>Copy the key and paste into this tool.</li>
+</ol>
+<p>Free tier: 5 calls/sec, 100,000/day.</p>
+
+<p><strong>MegaNode (BSC)</strong></p>
+<ol>
+  <li>Click "Get Key ↗" next to the MegaNode field.</li>
+  <li>Sign up with Google or email — free.</li>
+  <li>Default API key is auto-created. Find it under <strong>API Keys</strong> in the dashboard.</li>
+  <li>Ensure BSC Mainnet is enabled (usually on by default).</li>
+  <li>Copy and paste.</li>
+</ol>
+<p>MegaNode uses JSON-RPC 2.0. This tool handles the translation — you only provide the key.</p>
+
+<p><strong>Helius (Solana)</strong></p>
+<ol>
+  <li>Click "Get Key ↗" next to the Helius field. A new tab opens at <code>dashboard.helius.dev</code>.</li>
+  <li>Click <strong>Sign Up</strong>. Register with Google or email — no credit card required.</li>
+  <li>After signup you'll see a <strong>"Choose your plan"</strong> page with four columns: Free, Developer, Business, Professional.</li>
+  <li><strong>⚠ Watch out:</strong> The <strong>Developer</strong> column is marked "Recommended" with "50% off first month" pricing. <strong>Ignore it — it's an upsell.</strong> You don't need it.</li>
+  <li>Click the <strong>Free</strong> column on the far left ($0/month).</li>
+  <li>Click the <strong>"Start building"</strong> button at the bottom of the Free column. Do NOT click "Pay with Card" on any other column.</li>
+  <li>You land on the Dashboard. At the top it confirms "Current Plan: Free" and "Credit Usage: 1,000,000". Ignore the orange <strong>"Upgrade Now"</strong> button — you don't need it.</li>
+  <li>In the <strong>left sidebar</strong>, click <strong>"API Keys"</strong> (the second menu item from the top, just below "Home").</li>
+  <li>You'll see a table with one row already there — Helius auto-creates a default key for you with a random name like "Whalecactus" or "Tigersharp". <strong>Do NOT click "+ Create new"</strong> — you don't need a second key, and clicking it creates one immediately with no confirmation.</li>
+  <li>The key itself is hidden behind dots (●●●●●●●●) for security. To the right of the dots you'll see two small icons: an <strong>eye icon (👁)</strong> to reveal the key, and a <strong>copy icon (📋)</strong> next to it.</li>
+  <li>Click the <strong>copy icon (📋)</strong> directly — it copies the full key to your clipboard without even needing to reveal it. (Or click the eye icon first if you want to see it — it'll show as a UUID like <code>037e600e-3194-4ece-bdaf-5e8078e3afcd</code>.)</li>
+  <li>Paste the copied key into the Helius field on the tax tool page.</li>
+</ol>
+<p>Free tier: 10 req/sec, 1M credits/month. The grayed-out features in the Free plan column (Staked Connections, Enhanced WebSockets, LaserStream gRPC) are not needed by this tool. Tool respects rate limits automatically.</p>
+<p><strong>Ignore these dashboard sections:</strong> Core Services (RPC, LaserStream, Sender, Solana Data APIs), Advanced Solutions (Enterprise, Dedicated Nodes, Staked Connections). None apply to this tax tool — we only use the standard Enhanced Transactions endpoint, which is included on the free tier automatically.</p>
+
+<p><strong>CryptoCompare Key (historical prices) — REQUIRED</strong></p>
+<div class="callout warn">Pricing will not work without this key. CoinGecko's free tier only goes back 365 days, which isn't enough for multi-year tax history. CryptoCompare's free tier has full history, so we use it instead.</div>
+<ol>
+  <li>Click "Get Key ↗" next to the CryptoCompare field. A new tab opens at <code>cryptocompare.com/cryptopian/api-keys</code>.</li>
+  <li>Sign up with email if you don't have an account. Verify the email link they send.</li>
+  <li>After login you land on the API Keys dashboard. Click <strong>"Create API Key"</strong> (or similar — UI wording varies).</li>
+  <li>Give the key a name like "Tax Tool". Under permissions, enable <strong>"Read All Price Streaming and Polling Endpoints"</strong> (required for historical pricing).</li>
+  <li>Save the key. It appears as a 64-character hexadecimal string. Click the copy icon.</li>
+  <li>Paste into the CryptoCompare field on this tax tool page.</li>
+  <li>Click <strong>Test Key</strong> to verify it works before running a full fetch.</li>
+</ol>
+<p>Free tier: full daily historical depth (years of data) for major coins. No 365-day limit, unlike CoinGecko. Rate limits are generous for personal use.</p>
+
+<h3>Finding Your Wallet Addresses</h3>
+
+<div class="callout warn" style="margin-bottom:12px">
+  <strong>⚠ This is the single most important input to get right.</strong> The tool needs <em>every wallet you've ever used</em> — not just your current main one. Missing even one old archived wallet causes two cascading failures: self-transfers between your wallets get marked as taxable sales, AND spending from the "unknown" wallet later produces "missing cost basis" errors in FIFO. Take the extra 5 minutes to dig through old accounts.
+</div>
+
+<p><strong>MetaMask (ETH + BSC)</strong></p>
+<ol>
+  <li>Open MetaMask. Click the account dropdown at the top.</li>
+  <li>For each account listed — current, old, archived, hardware-linked — click the account name. It copies the <code>0x...</code> address (42 chars).</li>
+  <li>MetaMask uses the <em>same address</em> on both Ethereum and BSC. If you've used both networks, list each address twice: once as <code>eth:0x...</code> and once as <code>bsc:0x...</code>.</li>
+  <li>Don't skip an old account just because "there's nothing in it now" — you may have sent the funds out, and if the destination wallet isn't also listed, FIFO breaks.</li>
+</ol>
+
+<p><strong>Phantom (Solana)</strong></p>
+<ol>
+  <li>Open Phantom. Click the wallet name at the top to see the account selector.</li>
+  <li>For each Solana account in the list, click it and copy the address (base58, 32–44 chars, no 0x).</li>
+  <li>Add each as <code>sol:ADDRESS</code> on its own line.</li>
+  <li>Hardware wallets connected to Phantom show up in the same selector — include those too.</li>
+</ol>
+
+<p><strong>Other wallets to check</strong></p>
+<ul>
+  <li>Old Trust Wallet, Coinbase Wallet, Atomic Wallet, Exodus installations</li>
+  <li>Solflare, Backpack (Solana)</li>
+  <li>Any hardware wallet (Ledger, Trezor) — get the addresses from the companion app or from Etherscan/Solscan using transaction history</li>
+  <li>Any wallet generated during a specific protocol interaction (e.g., a one-time wallet for a launchpad) that you later abandoned but may have transferred from/to</li>
+</ul>
+
+<div class="callout">
+  <strong>Iterative discovery technique:</strong> Run the tool once with your main wallet. In the transactions table, filter by status "Review" and look at the counterparty addresses (fromAddr / toAddr) on transfers you recognize as "I sent this to myself". Those are wallets you forgot to list. Add them and re-run. Repeat until the "missing cost basis" errors stop appearing. Each iteration is cached so re-runs are fast.
+</div>
+
+<h3>Running the Tool</h3>
+<ol>
+  <li>Fill in all four API keys and every wallet address, then click <strong>Fetch &amp; Calculate</strong>.</li>
+  <li>Watch the live run log for progress. The run proceeds through these phases:
+    <ol style="margin-top:6px">
+      <li><strong>Transaction fetch</strong> — Etherscan (ETH), MegaNode (BSC), Helius (Solana). Fast: usually &lt;30 seconds.</li>
+      <li><strong>Internal transfer tagging</strong> — instant, uses your wallet list to identify non-taxable self-transfers.</li>
+      <li><strong>Token name resolution</strong> — Jupiter verified list bulk fetch, then per-mint search for unknowns. ~30 seconds for a typical wallet.</li>
+      <li><strong>CryptoCompare pricing</strong> — historical USD prices for major coins (SOL, ETH, BTC, USDC, etc.). ~300ms per unique (coin, date) pair. Takes from a few seconds to a couple of minutes on first run depending on how many unique pairs exist.</li>
+      <li><strong>Swap-pair price derivation</strong> — for memecoins and other tokens CryptoCompare doesn't index, the tool derives a USD value from the swap's priced counterpart. Instant, no network calls. This handles pump.fun tokens, Jupiter/Raydium memecoin trades, and anything else where one side of the swap is a known coin. See the FAQ for details on how this works and why it's IRS-correct.</li>
+      <li><strong>FIFO engine</strong> — instant, processes the priced data into gain/loss records.</li>
+    </ol>
+  </li>
+  <li>All API results cache in your browser. Re-runs are near-instant unless you click Clear Cache.</li>
+</ol>
+
+<h3>Understanding the Results</h3>
+<p><strong>Summary cards</strong> show short-term and long-term realized gains for the selected tax year only. "Needs Review" counts ALL transactions across history that couldn't be processed automatically.</p>
+<p><strong>Status badges:</strong></p>
+<ul>
+  <li><strong>OK</strong> (green) — successfully priced and in FIFO calculations</li>
+  <li><strong>Review</strong> (yellow) — missing price, unknown token, or basis mismatch. Fix manually before filing.</li>
+  <li><strong>Internal</strong> (gray) — transfer between your own wallets. Not taxable.</li>
+</ul>
+
+<p><strong>Common "Needs Review" reasons (in order of frequency):</strong></p>
+<ul>
+  <li><em>Missing cost basis for X SOL/ETH/BNB — no matching acquisition lot</em> — FIFO saw a disposal of this asset but couldn't find a matching earlier acquisition. <strong>Usually caused by a missing wallet address in your config.</strong> The acquisition happened in a wallet you didn't list, so the tool never saw the incoming lot. Add the missing wallet and re-run. If the acquisition was truly off-chain (Coinbase, KuCoin, MEXC, tip.cc, or another centralized service), you'll need to reconstruct basis manually or treat it as a zero-basis acquisition at FMV on receipt date.</li>
+  <li><em>Unknown token — not in known-asset list</em> — tool saw a token transfer but couldn't price it via CryptoCompare AND couldn't derive a price from a swap counterpart. Usually a one-sided receipt: airdrop, gift, or transfer from a centralized service (tip.cc, an exchange). For these, you'll need to research the price manually at DexScreener, Birdeye, or Solscan for that timestamp, or treat as zero-basis at receipt.</li>
+  <li><em>DEX swap — unknown token, manual review required</em> — same root cause as above, but the row is a swap specifically with no priceable counterpart. Rare: occurs when both sides of a swap are unknown memecoins (token-for-token swap of two unlisted assets).</li>
+  <li><em>CryptoCompare price lookup failed</em> — rare; usually a transient API issue. Re-run to retry.</li>
+</ul>
+<p><strong>What you will NOT see in the review list anymore:</strong> Pump.fun memecoins, Jupiter/Raydium swap tokens, and other unknown tokens that were acquired or disposed via a swap with a priceable counterpart (SOL, USDC, USDT, etc.). Those now get their USD value derived automatically from the swap counterpart and flow into FIFO normally. Look for the note <code>Price derived from swap counterpart</code> in the transactions table.</p>
+
+<h3>Fixing Needs-Review Items</h3>
+<ol>
+  <li>Click <strong>Needs-Review CSV</strong> to download just the flagged rows.</li>
+  <li>Open in Excel/Sheets.</li>
+  <li>Research each price at DexScreener, Birdeye, or CoinGecko.</li>
+  <li>For exchange-sourced tokens, pull the Coinbase CSV and match by date+amount.</li>
+  <li>For unrecoverable records (old KuCoin/MEXC), document a reasonable-method reconstruction with your CPA.</li>
+  <li>The planned database version will persist manual overrides so you fix each one once.</li>
+</ol>
+
+<h3>Exporting for Tax Filing</h3>
+<p><strong>Form 8949 CSV</strong> — short-term gains → Box C, long-term → Box F. Both boxes are for transactions NOT reported on a 1099-B (standard for self-custody crypto). Import into:</p>
+<ul>
+  <li><strong>TurboTax Premier/Premium:</strong> Investments → Stocks, Crypto → Enter a Different Way → Upload CSV</li>
+  <li><strong>H&amp;R Block:</strong> Similar flow under capital gains</li>
+  <li><strong>FreeTaxUSA:</strong> Manual entry per row</li>
+  <li><strong>Your CPA:</strong> Send the CSV directly</li>
+</ul>
+<p><strong>Raw Transactions CSV</strong> — complete log for backup or import into Koinly/Awaken.</p>
+<p><strong>Needs-Review CSV</strong> — flagged items for cleanup.</p>
+
+<h3>Troubleshooting</h3>
+<p><strong>"NOTOK" or "Invalid API Key" from Etherscan:</strong> Double-check the full key was copied. Fresh Etherscan keys take 1–2 minutes to activate server-side after creation.</p>
+<p><strong>MegaNode returns empty for BSC:</strong> Verify BSC Mainnet is enabled for your NodeReal key in the dashboard sidebar (BSC / BNB Chain must be toggled on).</p>
+<p><strong>Helius returns empty for Solana:</strong> Use the wallet address from Phantom, not a sub-account or token account address. Solana wallet addresses are base58, 32–44 chars, no <code>0x</code> prefix.</p>
+<p><strong>CryptoCompare Test Key fails:</strong> The Test Key diagnostic shows the exact HTTP response. If it's HTTP 401 or 403, the key was copied wrong — delete the field and re-copy from the CryptoCompare dashboard. Don't try to type the key manually; it's easy to mistake characters like <code>0</code>/<code>O</code> or <code>l</code>/<code>1</code>.</p>
+<p><strong>Everything flagged "Missing cost basis":</strong> You're missing wallet addresses. Look at the review rows — each has a <code>fromAddr</code> and <code>toAddr</code> column. Any address there that you recognize as yourself needs to go into the Wallet Addresses field. Re-run after adding. This is almost always the fix; truly off-chain basis (from exchange deposits or defunct services) is rarer than people expect.</p>
+<p><strong>Memecoins still flagged as "Unknown token" after a run:</strong> Swap-pair derivation handles memecoins acquired or disposed via DEX swaps automatically. If a memecoin still appears in Needs Review, it's typically because it was a one-sided receipt (airdrop, gift, tip, transfer from an exchange) with no corresponding outflow in the same transaction — so there's no priceable counterpart to derive a value from. For these, research the price manually at DexScreener/Birdeye/Solscan or treat as zero-basis on receipt.</p>
+
+<h3>Privacy &amp; Security</h3>
+<ul>
+  <li>Everything runs in your browser. No server, no database, no analytics.</li>
+  <li>API keys and addresses never leave your device except to call Etherscan, MegaNode, Helius, CoinGecko.</li>
+  <li><strong>Save Config</strong> stores settings in localStorage on this browser only.</li>
+  <li>Blockchain addresses are public. Anyone with your address can see the same data.</li>
+</ul>
+
+<h3>FAQ</h3>
+<p><strong>Q: How does the tool price pump.fun / Jupiter memecoin trades if no aggregator tracks them?</strong><br>
+A: <em>Swap-pair price derivation.</em> For every DEX swap, the tool looks at both sides of the transaction. If one side is a token CryptoCompare knows about (SOL, USDC, USDT, etc.) and the other side is an unknown memecoin, the tool assigns the memecoin's USD value equal to the priced side's total USD value. Per-unit price is derived as USD value divided by quantity. Example: you swap 0.055 SOL (CryptoCompare says $10.89) for 1,193,950 "6fig" tokens. The tool assigns $10.89 as the cost basis for that 6fig acquisition, making the implied per-6fig price $0.00000912.</p>
+<p><strong>Q: Is swap-pair derivation IRS-correct?</strong><br>
+A: Yes. For crypto-to-crypto trades, IRS guidance (and longstanding practice for capital assets generally) holds that fair market value is the value of what was given up. The tool's derived value is literally the value of what you gave up (or received) in the same transaction, which is the cleanest possible evidence of fair market value — arguably better than a market-average aggregator quote from a different timestamp. Transaction fees paid in the same transaction are included in the derived value, which is also IRS-correct (fees are part of cost basis for capital assets).</p>
+<p><strong>Q: Which cases does swap-pair derivation NOT handle?</strong><br>
+A: Three cases get left in Needs Review:</p>
+<ol>
+  <li><strong>Orphan receipts</strong> — tokens that arrived in your wallet without a corresponding outflow (airdrops, gifts, tips, withdrawals from centralized services like Coinbase or tip.cc). No counterpart exists, so no derivation possible. For these, research the market price manually or treat as zero-basis on receipt.</li>
+  <li><strong>Orphan disposals</strong> — tokens that left your wallet without a corresponding inflow (sent as a gift or tip to someone else). No counterpart exists.</li>
+  <li><strong>Both-sides-unknown swaps</strong> — rare cases where you swapped one unlisted memecoin directly for another unlisted memecoin. Neither side is priceable, so no derivation works.</li>
+</ol>
+<p><strong>Q: Can I use this for TY2019–2024?</strong><br>
+A: Yes. Change the tax year field. Tool always fetches complete history so FIFO lots carry across years. Wallet-by-wallet tracking became mandatory Jan 1, 2025 per IRS Rev. Proc. 2024-28.</p>
+<p><strong>Q: What if FIFO can't find acquisition basis for a disposal?</strong><br>
+A: This happens when tokens entered your wallet from a source the tool didn't scan (an exchange withdrawal, tip.cc, another wallet you forgot to list, or a misclassified swap). The tool flags these as orphan disposals and surfaces them in the <strong>Manual Cost Basis Overrides</strong> panel below the realized gains table, sorted by approximate proceeds (impact). For each one you can: ignore it (skip from 8949), enter a manual basis you researched from your records, or treat it as zero-basis (100% gain). Big-dollar rows are worth investigating; dust is fine to leave alone. Overrides persist in your browser across runs.</p>
+<p><strong>Q: What if a row is unpriced — neither CryptoCompare nor swap-pair derivation could attach a USD value?</strong><br>
+A: The tool surfaces these in the <strong>Unpriced Transactions</strong> panel below the cost basis overrides panel. Two flavors: <em>orphan receipts</em> (incoming tokens like airdrops or tip.cc deposits — set the cost basis you paid) and <em>unpriced disposals</em> (memecoin sells where neither side could be priced — set the proceeds you received). For each row, choose to ignore it, enter a USD value, or treat as zero. After clicking Save &amp; Re-Apply, the receipt becomes a normal acquisition lot in FIFO and the disposal flows through to the 8949 with the correct gain/loss. In TurboTax exports these are tagged <code>[MANUAL]</code> or <code>[ZERO]</code> as Buy or Sale rows.</p>
+<p><strong>Q: Staking rewards?</strong><br>
+A: Not in v1. Currently treated as zero-basis acquisitions. Future fix.</p>
+<p><strong>Q: Bitcoin / Cardano support?</strong><br>
+A: Not yet. Planned.</p>
+<p><strong>Q: Add more known tokens?</strong><br>
+A: Edit the <code>KNOWN_ASSETS</code> object near the top of the <code>&lt;script&gt;</code> block. Add contract address (lowercase for EVM, base58 for Solana) and CoinGecko ID, save, reload.</p>
+
+</div>
+</details>
+
+<div class="modal-overlay" id="helpModal" onclick="if(event.target===this)closeHelp()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeHelp()">×</button>
+    <div id="helpContent"></div>
+  </div>
+</div>
+
+<script>
+/* Crypto Tax FIFO Tool - v1
+   APIs: Etherscan V2 (ETH), MegaNode/NodeReal (BSC), Helius (SOL), CoinGecko (prices) */
+
+// ---------- HELP MODAL CONTENT ----------
+const HELP = {
+  config: {
+    title: 'Configuration',
+    body: `<p>This section is where you provide the three ingredients the tool needs:</p>
+      <ul>
+        <li><strong>Tax year</strong> — which year's gains you want to report.</li>
+        <li><strong>API keys</strong> — one per blockchain. All free tiers. Click "Get Key ↗" next to each field to sign up.</li>
+        <li><strong>Wallet addresses</strong> — every wallet you own, one per line, prefixed with the chain.</li>
+      </ul>
+      <p>Click <strong>Save Config</strong> to remember these settings in your browser. Nothing is sent to any server except the three API providers.</p>`
+  },
+  taxYear: {
+    title: 'Tax Year',
+    body: `<p>The tax year you're filing for. The tool shows gains/losses for disposals (sales) within this calendar year.</p>
+      <p><strong>Important:</strong> The tool fetches your <em>entire</em> transaction history regardless of tax year, because FIFO cost basis requires knowing when each coin was originally acquired. If you bought ETH in 2021 and sold it in 2025, both events are needed to calculate the gain correctly.</p>
+      <p>Per IRS Rev. Proc. 2024-28, starting January 1, 2025, cost basis must be tracked <strong>per wallet</strong>, not pooled. This tool does that automatically.</p>`
+  },
+  method: {
+    title: 'Cost Basis Method',
+    body: `<p><strong>FIFO (First In, First Out)</strong> is the IRS default and the safest choice if you haven't made a formal election with your tax professional.</p>
+      <p>With FIFO: when you sell a coin, the oldest coin you bought is considered sold. If you bought 1 ETH in 2020 at $200 and another in 2024 at $3000, selling 1 ETH in 2025 uses the 2020 lot's $200 basis — producing a larger gain but also a long-term rate.</p>
+      <p>LIFO, HIFO, and Specific ID may produce different outcomes but require formal election. Not supported in v1.</p>`
+  },
+  ethKey: {
+    title: 'Etherscan V2 API Key',
+    body: `<p>Etherscan is the primary Ethereum block explorer. Their free V2 API reads ETH mainnet transaction history at 5 calls/sec, 100,000/day.</p>
+      <h3>How to get a key</h3>
+      <ol>
+        <li>Click <strong>Get Key ↗</strong> next to the field (opens <code>etherscan.io/apis</code>).</li>
+        <li>Register a free account with email.</li>
+        <li>Verify email, log in, go to profile → <strong>API Keys</strong>.</li>
+        <li>Click <strong>+ Add</strong>, name it "Tax Tool", create.</li>
+        <li>Copy and paste here.</li>
+      </ol>
+      <p>The key identifies <em>you</em>, not a wallet. One key queries every public Ethereum address.</p>
+      <div class="callout warn"><strong>BSC note:</strong> As of December 18, 2025, BNB Smart Chain is no longer in Etherscan's free tier. Use the separate MegaNode key for BSC.</div>`
+  },
+  bscKey: {
+    title: 'MegaNode API Key (BSC)',
+    body: `<p>MegaNode (by NodeReal) is the recommended free alternative for BNB Smart Chain after BscScan's API was deprecated December 18, 2025. BNB Chain officially points users to MegaNode's "BSCTrace" service.</p>
+      <h3>How to get a key</h3>
+      <ol>
+        <li>Click <strong>Get Key ↗</strong> next to the field (opens <code>dashboard.nodereal.io</code>).</li>
+        <li>Sign up with Google or email — free.</li>
+        <li>A default API key is auto-created. Find it under <strong>API Keys</strong> in the dashboard sidebar.</li>
+        <li>Ensure BSC Mainnet is enabled for the key (usually on by default).</li>
+        <li>Copy and paste here.</li>
+      </ol>
+      <p>Unlike Etherscan, MegaNode uses JSON-RPC 2.0. This tool handles the translation — just provide the key.</p>`
+  },
+  solKey: {
+    title: 'Helius API Key (Solana)',
+    body: `<p>Helius is the best free Solana data provider for tax purposes because it <strong>auto-parses Jupiter and Raydium swaps</strong> into clean, human-readable form. Without Helius, you'd have to decode raw Solana transaction logs yourself — a massive undertaking.</p>
+      <h3>How to get a key (step by step)</h3>
+      <ol>
+        <li>Click <strong>Get Key ↗</strong> next to the field (opens <code>dashboard.helius.dev</code> in a new tab).</li>
+        <li>Click <strong>Sign Up</strong> and register with Google or email. It's free — no credit card required.</li>
+        <li>After signup, Helius will show a <strong>"Choose your plan"</strong> page with four columns: Free, Developer, Business, Professional.</li>
+        <li><strong>⚠ IMPORTANT:</strong> The <strong>Developer</strong> plan will be marked "Recommended" and show "50% off first month — $24.50". <strong>Ignore this.</strong> It's an upsell. You do NOT need it.</li>
+        <li>Click the <strong>leftmost column labeled "Free"</strong> ($0/month, "Ideal for testing").</li>
+        <li>At the bottom of the Free column, click the <strong>"Start building"</strong> button. Do NOT click any "Pay with Card" button on the other columns.</li>
+        <li>You'll land on the main <strong>Dashboard</strong>. At the top you'll see "Current Plan: Free" and "Credit Usage: 1,000,000" — this confirms you're on the free tier. Ignore the orange <strong>"Upgrade Now"</strong> button; you do not need to upgrade.</li>
+        <li>Look at the <strong>left sidebar</strong>. You'll see menu items: Home, API Keys, RPCs, LaserStream, WebSockets, Sender, Webhooks, Dedicated Nodes. Click <strong>"API Keys"</strong> (the second item from the top).</li>
+        <li>Helius has <strong>already created a default key for you</strong> with an auto-generated random name like "Whalecactus" or "Tigersharp". <strong>Do NOT click "+ Create new"</strong> — you don't need a second key, and it creates one immediately with no confirmation prompt.</li>
+        <li>The key is hidden behind dots (●●●●●●●●). Next to the dots you'll see two icons: an <strong>eye (👁)</strong> to reveal the key, and a <strong>copy icon (📋)</strong> next to it.</li>
+        <li>Click the <strong>copy icon (📋)</strong> — it copies the full key to your clipboard. You don't need to reveal it first. The key is a UUID with dashes, e.g. <code>037e600e-3194-4ece-bdaf-5e8078e3afcd</code>.</li>
+        <li>Paste the copied key into the Helius field on this tax tool page.</li>
+      </ol>
+      <div class="callout"><strong>Tip:</strong> You can also see your key in a shortened form in the top-left corner of the Helius dashboard, under your project name ("Antgentle" or whatever Helius auto-named your project). It's displayed as <code>Free: 037e600e-3194-4ece-...</code> but you'll need the full version from the API Keys page.</div>
+      <div class="callout warn"><strong>Don't panic about the grayed-out features.</strong> On the Free plan, "Staked Connections", "Enhanced WebSockets", and "LaserStream gRPC" will appear grayed out with X marks. This is fine — this tool doesn't use any of those. It only uses the basic Enhanced Transactions endpoint, which the free tier includes.</div>
+      <p><strong>Free tier limits:</strong> 10 req/sec, 1M credits/month. Historical transaction queries cost 10 credits each and pull 100 transactions per call — more than enough for years of personal tax history. The tool respects rate limits automatically.</p>`
+  },
+  ccKey: {
+    title: 'CryptoCompare API Key',
+    body: `<p>CryptoCompare (rebranded as CCData / CoinDesk Data) provides historical USD prices for cryptocurrencies going back years. This tool uses it to value every transaction at its fair market USD price on the date it happened.</p>
+      <div class="callout warn"><strong>Why CryptoCompare and not CoinGecko?</strong> CoinGecko's free Demo tier is limited to the last 365 days of historical data. Anything older returns "HTTP 401 — request exceeds the allowed time range" and requires their paid Analyst tier (~$129/mo). CryptoCompare's free tier has no such restriction — you can query prices from years ago. That's essential for tax calculations that span multiple years.</div>
+      <h3>How to get a key (step by step)</h3>
+      <ol>
+        <li>Click <strong>Get Key ↗</strong> next to the field (opens <code>cryptocompare.com/cryptopian/api-keys</code> in a new tab).</li>
+        <li>If you don't have an account, click <strong>Sign Up</strong> and register with email. Verify the email link they send you.</li>
+        <li>After logging in, you'll land on the API Keys page. Click <strong>"Create API Key"</strong> or <strong>"+ New Key"</strong>.</li>
+        <li>Give it a name like "Tax Tool". For the permissions, enable at least <strong>"Read All Price Streaming and Polling Endpoints"</strong> — this is required for the historical price endpoint. Save.</li>
+        <li>The key appears on screen. It's a <strong>64-character hexadecimal string</strong> (no "CG-" prefix like CoinGecko). It'll look something like <code>a1b2c3d4e5f6...</code></li>
+        <li>Click the copy icon, then paste into the CryptoCompare field on this tax tool page.</li>
+      </ol>
+      <h3>Free tier limits</h3>
+      <ul>
+        <li><strong>Full historical depth</strong> — daily prices going back to each coin's listing date (years of history for BTC, ETH, SOL, etc.)</li>
+        <li>Rate limits are IP-based for anonymous use, per-key for authenticated use. Free-tier users typically get a few thousand calls per month, which is way more than a personal tax run needs.</li>
+        <li>The tool paces itself with a small delay between calls.</li>
+      </ul>
+      <div class="callout"><strong>Note on memecoins:</strong> Like CoinGecko, CryptoCompare only indexes mainstream coins. Pump.fun and brand-new Solana memecoins won't be priced — those will still flag as "Needs Review" for manual pricing from DexScreener or Birdeye.</div>`
+  },
+  addresses: {
+    title: 'Wallet Addresses',
+    body: `<p>Paste every wallet address you own, one per line, prefixed with the chain identifier.</p>
+      <h3>Format</h3>
+      <p><code>chain:address</code> where <code>chain</code> is <code>eth</code>, <code>bsc</code>, or <code>sol</code>.</p>
+      <h3>Examples</h3>
+      <pre class="codeblock">eth:0xfF3f428583c15a5681584e9e5e86e270418AC4d3
+bsc:0xfF3f428583c15a5681584e9e5e86e270418AC4d3
+sol:7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
+sol:AczKvPupbGowAjnwP2y5eWLsfjAeUAGrt2rESjMnN422</pre>
+
+      <div class="callout warn">
+        <strong>CRITICAL: List every single wallet you own — including old, empty, archived, or rarely-used ones.</strong>
+        <p style="margin:6px 0 0 0">The tool uses this list for two separate purposes, and missing a wallet breaks both:</p>
+        <ol style="margin:6px 0 0 20px">
+          <li><strong>Internal transfer detection.</strong> When you move crypto from Wallet A to Wallet B and both are in this list, the tool marks it non-taxable. If only Wallet A is listed, the tool sees "you sent coins away" and records it as a taxable disposal with no matching acquisition on the other side.</li>
+          <li><strong>Cost basis preservation through FIFO.</strong> When you later spend the coins from Wallet B, FIFO looks back for the acquisition lot. If the transfer from A to B was miscategorized as a disposal, that lot was never created in B — so FIFO produces <em>"Missing cost basis for X SOL — no matching acquisition lot"</em> errors.</li>
+        </ol>
+        <p style="margin:6px 0 0 0">Even a dust-level transfer matters. A single 0.002 SOL transfer fee paid from an unlisted wallet will produce "missing cost basis" review rows.</p>
+      </div>
+
+      <h3>Finding your addresses</h3>
+      <ul>
+        <li><strong>MetaMask:</strong> Click your account name at the top — it copies the address. Repeat for every account you've ever used, including ones you now consider "old".</li>
+        <li><strong>Phantom:</strong> Click the wallet name at the top — copies the Solana address. If you have multiple Phantom accounts, click the selector and copy each one.</li>
+        <li><strong>Hardware wallets (Ledger, Trezor):</strong> Use the same flow through their companion app or via MetaMask/Phantom if connected.</li>
+      </ul>
+
+      <h3>MetaMask on multiple chains</h3>
+      <p>MetaMask uses the same <code>0x...</code> address for Ethereum and BSC. If you've used it on both networks, list it twice — once with <code>eth:</code> and once with <code>bsc:</code>.</p>
+
+      <h3>What if I can't remember an old wallet?</h3>
+      <p>Run the tool once with what you have. Any "sent to 0x...ABC" or "sent to sol:...XYZ" entries that you recognize as yourself — but aren't in your list — are candidates. Add those and re-run. The tool reclassifies them as internal and the missing-basis errors disappear.</p>`
+  },
+  log: {
+    title: 'Run Log',
+    body: `<p>Live progress output during a fetch run. Color-coded:</p>
+      <ul>
+        <li><span style="color:var(--muted)">Gray</span> — progress messages</li>
+        <li><span style="color:var(--ok)">Green</span> — successful milestones</li>
+        <li><span style="color:var(--warn)">Yellow</span> — warnings (skipped wallets, missing data)</li>
+        <li><span style="color:var(--err)">Red</span> — errors (API failures, invalid keys)</li>
+      </ul>
+      <p>If a run fails or returns unexpected results, check the log first — it usually points to exactly which wallet or API caused the problem.</p>`
+  },
+  summary: {
+    title: 'Summary',
+    body: `<p>High-level totals for your selected tax year:</p>
+      <ul>
+        <li><strong>Short-Term G/L</strong> — gains/losses from assets held less than 365 days. Taxed at ordinary income rates.</li>
+        <li><strong>Long-Term G/L</strong> — assets held 365+ days. Taxed at lower capital gains rates (0%/15%/20% depending on income).</li>
+        <li><strong>Total Realized</strong> — sum of both. Net crypto gain/loss for the year.</li>
+        <li><strong>Needs Review</strong> — transactions the tool couldn't process automatically. Must be resolved before filing.</li>
+        <li><strong>Total Transactions</strong> — every transaction fetched across all wallets and years.</li>
+      </ul>`
+  },
+  txTable: {
+    title: 'Transactions Table',
+    body: `<p>Every normalized transaction from all your wallets. Use filters to narrow the view.</p>
+      <h3>Columns</h3>
+      <ul>
+        <li><strong>Date</strong> — UTC date of the transaction</li>
+        <li><strong>Chain / Wallet</strong> — which blockchain and wallet</li>
+        <li><strong>Type</strong> — buy (incoming) or sell (outgoing); 🔄 marks swaps</li>
+        <li><strong>Asset</strong> — token symbol</li>
+        <li><strong>Qty</strong> — amount transacted</li>
+        <li><strong>USD/unit</strong> — historical price at that date</li>
+        <li><strong>USD value</strong> — qty × price</li>
+        <li><strong>Status</strong> — OK / Review / Internal (hover for details)</li>
+        <li><strong>Note</strong> — explanation if review needed</li>
+      </ul>
+      <p>First 500 rows displayed for performance. Full set available in Raw CSV export.</p>`
+  },
+  gainsTable: {
+    title: 'Realized Gains Table',
+    body: `<p>Every FIFO match: a disposal matched against the oldest acquisition lot. This data becomes your Form 8949.</p>
+      <h3>How FIFO matching works</h3>
+      <p>When you sell 1 ETH, the tool looks for the oldest 1 ETH you bought in the same wallet. If the oldest lot was 0.6 ETH, it consumes that lot entirely and takes 0.4 ETH from the next-oldest. Each matched piece becomes one row in this table.</p>
+      <p>A single sale can produce multiple rows if it consumed multiple lots.</p>
+      <h3>Columns</h3>
+      <ul>
+        <li><strong>Qty</strong> — amount of this particular match (not the full sale)</li>
+        <li><strong>Acquired / Sold</strong> — dates that determine short vs long term</li>
+        <li><strong>Basis</strong> — qty × original purchase price</li>
+        <li><strong>Proceeds</strong> — qty × sale price</li>
+        <li><strong>Gain/Loss</strong> — proceeds − basis</li>
+        <li><strong>Term</strong> — Short (&lt;365 days) or Long (≥365 days)</li>
+      </ul>`
+  },
+  exports: {
+    title: 'CSV Exports',
+    body: `<p>Four downloadable CSVs:</p>
+      <h3>Form 8949 CSV</h3>
+      <p>Realized gains for the selected tax year. Short-term → Box C, long-term → Box F (standard for self-custody crypto not reported on 1099-B). Import into TurboTax via the "I'll type it in myself" path, hand to your CPA, or use as your own records.</p>
+      <p>Rows where you used a manual cost basis override are prefixed <code>[MANUAL BASIS]</code>; zero-basis overrides are prefixed <code>[ZERO BASIS]</code>. Keep documentation of where you got the basis numbers in case of audit.</p>
+      <h3>TurboTax Custom CSV</h3>
+      <p>Matches TurboTax's official Custom CSV import template (<a href="https://ttlc.intuit.com/turbotax-support/en-us/help-article/cryptocurrency/create-csv-file-unsupported-source/L1yhp71Nt_US_en_US" target="_blank" rel="noopener">format reference</a>). Use this when you want TurboTax to compute gain/loss itself rather than importing pre-computed Form 8949 rows.</p>
+      <p>Key differences from Form 8949 CSV:</p>
+      <ul>
+        <li>One row per <strong>transaction</strong> (raw trades), not per FIFO match</li>
+        <li>Includes <strong>all years</strong>, not just the selected tax year — TurboTax needs full history for FIFO carryover</li>
+        <li>Crypto-to-crypto swaps mapped to <code>Convert</code>; pure receives → <code>Deposit</code>; pure sends → <code>Withdrawal</code></li>
+        <li>Network fees aggregated into the Fee Asset/Amount columns</li>
+        <li><strong>Manual basis overrides become synthetic <code>Buy</code> rows</strong> (USD → asset) dated 1 day before the disposal, so TurboTax's own FIFO picks up your overrides as cost basis. Without these synthetic rows, your manual basis work would be lost when TurboTax recomputes from scratch.</li>
+      </ul>
+      <p>After import, review the transaction list in TurboTax. You may want to re-classify some Deposits as <code>Income</code>/<code>Rewards</code> if they were airdrops or staking rewards, or some Withdrawals as <code>Expense</code> if they were spent on goods/services.</p>
+      <h3>Raw Transactions CSV</h3>
+      <p>Every normalized transaction across all years and wallets, including internal transfers and review items. Useful as backup or for importing into Koinly/Awaken to cross-check.</p>
+      <h3>Needs-Review CSV</h3>
+      <p>Just the flagged items. Open in a spreadsheet and fill in missing prices or cost basis manually.</p>
+      <div class="callout warn">All exports will be <strong>incomplete</strong> until you've resolved the Needs-Review items and Manual Cost Basis Overrides. Don't file without reconciling.</div>`
+  },
+  overrides: {
+    title: 'Manual Cost Basis Overrides',
+    body: `<p>Sometimes FIFO runs out of acquisition lots and can't price a disposal. This usually happens when:</p>
+      <ul>
+        <li>You moved tokens in from an exchange (Coinbase, MEXC, Binance) without scanning that source</li>
+        <li>You received tokens from a defunct service like tip.cc with no recoverable history</li>
+        <li>The token's first appearance in your wallet was via a transaction the tool can't classify (e.g. a pump.fun bonding curve interaction misread as a transfer)</li>
+        <li>You have other wallets you haven't added to the tool</li>
+      </ul>
+      <p>The tool can't know what you originally paid — only your records can. This panel lists every orphan disposal sorted by approximate proceeds (impact). For each row you have three options:</p>
+      <h3>Action options</h3>
+      <ul>
+        <li><strong>Ignore</strong> (default) — skip this row from the 8949 entirely. Equivalent to leaving it in Needs Review. Use this for dust amounts not worth investigating.</li>
+        <li><strong>Set basis $X</strong> — enter the total cost basis you paid (researched from your exchange records, Discord/Telegram tip history, etc.). Creates a phantom acquisition lot at that basis. The 8949 row will show <code>[MANUAL BASIS]</code>.</li>
+        <li><strong>Zero basis</strong> — treat the entire proceeds as 100% gain. Conservative (maximum tax) but always defensible. Use when you can't establish basis but want the row on the 8949 anyway. Marked <code>[ZERO BASIS]</code>.</li>
+      </ul>
+      <h3>Threshold filter</h3>
+      <p>The "Hide rows under $___" filter collapses dust by default. A $0.20 dust disposal isn't worth your time. A $200 disposal probably is. Adjust to your appetite.</p>
+      <h3>Persistence</h3>
+      <p>Overrides save to your browser's localStorage and persist across runs. You fix a row once, it stays fixed even after re-fetching transaction data. Override keys are based on transaction hash + asset + direction so they survive new wallet additions.</p>
+      <h3>Audit defense</h3>
+      <p>If you set a manual basis, <strong>document where the number came from</strong>. Common acceptable sources: exchange trade history CSV, bank statements showing the original USD purchase, screenshot of a Discord/Telegram message recording a tip, on-chain transaction from another wallet you can attest to owning. The IRS expects you to be able to substantiate basis claims if asked.</p>
+      <div class="callout warn">Overrides are stored in your browser only. If you clear browser data or switch devices, you'll need to re-enter them. Export your override list manually if you want a backup (future feature).</div>`
+  },
+  unpriced: {
+    title: 'Unpriced Transactions Panel',
+    body: `<p>Some rows can't be priced at all — neither CryptoCompare (which only knows mainstream coins) nor swap-pair derivation (which extracts price from a swap counterpart) could attach a USD value. These come in two flavors:</p>
+      <h3>Orphan receipts (incoming)</h3>
+      <p>Tokens that arrived in your wallet with no priceable counterpart. Common sources: pump.fun airdrops, tip.cc deposits of memecoins, tokens received from someone else's wallet, brand-new tokens before any DEX listing.</p>
+      <p>The user attests the <strong>cost basis</strong> they paid (which can be $0 for true airdrops). After applying, the receipt becomes a normal acquisition lot in FIFO. Future disposals of the same asset will FIFO-match against it and produce gain/loss correctly.</p>
+      <h3>Unpriced disposals (outgoing)</h3>
+      <p>Tokens you sold/sent where neither the token nor any counterpart in the same transaction could be priced. Common cause: memecoin → memecoin swaps, or a sale that went through an unindexed DEX.</p>
+      <p>The user attests the <strong>proceeds</strong> they received (USD value at the time of sale). After applying, FIFO treats this as a normal disposal and matches it against the appropriate acquisition lots. Set proceeds to $0 if you abandoned the asset or sold it for nothing.</p>
+      <h3>Action options (direction-aware)</h3>
+      <ul>
+        <li><strong>Ignore</strong> (default) — exclude from the 8949 entirely. Use for dust or rows you can't reconstruct.</li>
+        <li><strong>Set basis</strong> (receipts) / <strong>Set proceeds</strong> (disposals) — enter the USD value. Persists in localStorage across runs.</li>
+        <li><strong>Zero basis / Zero proceeds</strong> — treat as $0. For receipts: future disposals will be 100% gain (IRS-conservative). For disposals: the entire basis becomes a loss against $0 proceeds.</li>
+      </ul>
+      <h3>Receipts vs Phase 4 disposal panel — what's the difference?</h3>
+      <p>The orphan disposal panel (above) handles a different case: the disposal HAS a market value (CryptoCompare or swap-pair derivation priced it), but FIFO ran out of lots to match it against — you need to provide the BASIS for the disposal. This panel handles cases where the row had no value at all, requiring you to provide the FULL value (basis for receipts, proceeds for disposals).</p>
+      <h3>How they flow into TurboTax</h3>
+      <p>Receipts with manual basis are exported as <code>Buy</code> rows (USD → asset) so TurboTax's FIFO sees the basis. Disposals with manual proceeds are exported as <code>Sale</code> rows (asset → USD) so TurboTax records the proceeds. Both are tagged <code>[MANUAL]</code> or <code>[ZERO]</code> in the Description for CPA review.</p>
+      <div class="callout warn">Document your sources for any manual values. The IRS expects you to substantiate cost basis claims if asked. Common acceptable sources for orphan receipts: airdrop announcement with FMV, screenshot showing the receipt date, exchange withdrawal record. For unpriced disposals: DEX aggregator price snapshot, blockchain explorer transaction details.</div>`
+  },
+};
+
+function showHelp(key) {
+  const h = HELP[key];
+  if (!h) return;
+  document.getElementById('helpContent').innerHTML = `<h2>${h.title}</h2>${h.body}`;
+  document.getElementById('helpModal').classList.add('show');
+}
+function closeHelp() { document.getElementById('helpModal').classList.remove('show'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHelp(); });
+
+// ---------- KNOWN ASSETS ----------
+const KNOWN_ASSETS = {
+  eth: {
+    native: { symbol: 'ETH', priceId: 'ethereum', decimals: 18 },
+    '0xdac17f958d2ee523a2206206994597c13d831ec7': { symbol: 'USDT', priceId: 'tether', decimals: 6 },
+    '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48': { symbol: 'USDC', priceId: 'usd-coin', decimals: 6 },
+    '0x6b175474e89094c44da98b954eedeac495271d0f': { symbol: 'DAI', priceId: 'dai', decimals: 18 },
+    '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2': { symbol: 'WETH', priceId: 'weth', decimals: 18 },
+    '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599': { symbol: 'WBTC', priceId: 'wrapped-bitcoin', decimals: 8 },
+    '0x514910771af9ca656af840dff83e8264ecf986ca': { symbol: 'LINK', priceId: 'chainlink', decimals: 18 },
+    '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984': { symbol: 'UNI', priceId: 'uniswap', decimals: 18 },
+    '0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9': { symbol: 'AAVE', priceId: 'aave', decimals: 18 },
+  },
+  bsc: {
+    native: { symbol: 'BNB', priceId: 'binancecoin', decimals: 18 },
+    '0x55d398326f99059ff775485246999027b3197955': { symbol: 'USDT', priceId: 'tether', decimals: 18 },
+    '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d': { symbol: 'USDC', priceId: 'usd-coin', decimals: 18 },
+    '0xe9e7cea3dedca5984780bafc599bd69add087d56': { symbol: 'BUSD', priceId: 'binance-usd', decimals: 18 },
+    '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82': { symbol: 'CAKE', priceId: 'pancakeswap-token', decimals: 18 },
+    '0x2170ed0880ac9a755fd29b2688956bd959f933f8': { symbol: 'WETH', priceId: 'weth', decimals: 18 },
+    '0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c': { symbol: 'BTCB', priceId: 'bitcoin', decimals: 18 },
+  },
+  sol: {
+    native: { symbol: 'SOL', priceId: 'solana', decimals: 9 },
+    // Wrapped SOL — Jupiter and many Solana DEXes route SOL through WSOL during swaps.
+    // Helius reports these as SPL token transfers with this mint, so we alias them to SOL.
+    'So11111111111111111111111111111111111111112': { symbol: 'SOL', priceId: 'solana', decimals: 9 },
+    'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': { symbol: 'USDC', priceId: 'usd-coin', decimals: 6 },
+    'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': { symbol: 'USDT', priceId: 'tether', decimals: 6 },
+  },
+};
+
+// ---------- STATE ----------
+let STATE = { rawTxs: [], gains: [], userAddrs: new Set() };
+
+// ---------- LOGGING ----------
+const logEl = document.getElementById('log');
+function log(msg, cls='info') {
+  const line = document.createElement('div');
+  line.className = 'log-' + cls;
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function clearLog() { logEl.innerHTML = ''; }
+
+// ---------- CACHE ----------
+const CACHE_PREFIX = 'cryptotax_';
+function cacheGet(k) { try { const v = localStorage.getItem(CACHE_PREFIX + k); return v ? JSON.parse(v) : null; } catch { return null; } }
+function cacheSet(k, v) { try { localStorage.setItem(CACHE_PREFIX + k, JSON.stringify(v)); } catch {} }
+function cacheClear() {
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(CACHE_PREFIX) && k !== CACHE_PREFIX + 'config') keys.push(k);
+  }
+  keys.forEach(k => localStorage.removeItem(k));
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ---------- BASIS OVERRIDE STORAGE ----------
+// Lets the user manually enter cost basis for orphan disposals where FIFO ran
+// out of acquisition lots. Persists across runs in localStorage so users fix
+// large-impact rows once and they stay fixed. Per-row keying ensures additional
+// wallets/transactions don't break existing overrides.
+//
+// Override key format: `${txHash}:${assetKey}:${direction}` — stable across runs
+// because txHash + asset + direction uniquely identifies a transaction row.
+//
+// Override value shape: { action, basisUsd, ts }
+//   action='set_basis' → use basisUsd as the cost basis for this disposal
+//   action='zero_basis' → use $0 cost basis (forces 100% gain on the 8949)
+//   action='ignore'    → skip from 8949 (current default behavior)
+const OVERRIDE_KEY = 'cryptotax_basis_overrides_v1';
+function loadBasisOverrides() {
+  try { return JSON.parse(localStorage.getItem(OVERRIDE_KEY) || '{}'); }
+  catch { return {}; }
+}
+function saveBasisOverrides(o) {
+  try { localStorage.setItem(OVERRIDE_KEY, JSON.stringify(o)); return true; }
+  catch (e) { console.error('Failed to save overrides:', e); return false; }
+}
+function getOverrideKey(tx) {
+  return `${tx.txHash}:${tx.assetKey}:${tx.direction}`;
+}
+function clearAllOverrides() {
+  const overrides = loadBasisOverrides();
+  const total = Object.keys(overrides).length;
+  if (total === 0) {
+    alert('No overrides to clear — storage is already empty.');
+    return false;
+  }
+  // Count active vs stale so the confirmation can be specific.
+  // Active = any row in STATE.rawTxs has either flag set.
+  let active = 0;
+  if (typeof STATE !== 'undefined' && STATE.rawTxs) {
+    const activeKeys = new Set();
+    for (const t of STATE.rawTxs) {
+      if (t.appliedOverride || t.unpricedOverrideApplied) activeKeys.add(getOverrideKey(t));
+    }
+    active = Array.from(activeKeys).filter(k => overrides[k]).length;
+  }
+  const stale = total - active;
+  const msg = `Delete ALL ${total} manual basis overrides?\n\n` +
+    (active > 0 ? `⚠ ${active} of these are CURRENTLY ACTIVE (FIFO is using them right now). Clearing will remove them and any 8949 rows they produce will revert to "missing cost basis" orphans.\n\n` : '') +
+    (stale > 0 ? `${stale} are stale (left over from previous runs).\n\n` : '') +
+    (active > 0 ? `If you only want to clean up stale ones without losing your active work, click Cancel and use "Clear stale only" instead.\n\n` : '') +
+    `This cannot be undone.`;
+  if (confirm(msg)) {
+    localStorage.removeItem(OVERRIDE_KEY);
+    return true;
+  }
+  return false;
+}
+
+// Clear only overrides that aren't currently being used by FIFO. Preserves active
+// overrides (rows where tx.appliedOverride OR tx.unpricedOverrideApplied is set
+// after the last pipeline run). This is the safe cleanup operation.
+function clearStaleOverrides() {
+  const overrides = loadBasisOverrides();
+  const activeKeys = new Set();
+  for (const t of STATE.rawTxs) {
+    if (t.appliedOverride || t.unpricedOverrideApplied) activeKeys.add(getOverrideKey(t));
+  }
+  const staleKeys = Object.keys(overrides).filter(k => !activeKeys.has(k));
+  if (staleKeys.length === 0) {
+    alert('No stale overrides to clear. All stored overrides are currently being used by FIFO.');
+    return;
+  }
+  const activeCount = Object.keys(overrides).length - staleKeys.length;
+  const msg = `Remove ${staleKeys.length} stale override(s)?\n\n` +
+    `These are stored in localStorage but FIFO is not currently using them — typically left over from previous runs before you added more wallets or fixed code bugs.\n\n` +
+    (activeCount > 0 ? `Your ${activeCount} active override(s) will be preserved.\n\n` : '') +
+    `This cannot be undone.`;
+  if (!confirm(msg)) return;
+  for (const k of staleKeys) delete overrides[k];
+  if (!saveBasisOverrides(overrides)) {
+    log('Failed to save — localStorage error.', 'err');
+    return;
+  }
+  log(`Cleared ${staleKeys.length} stale override(s). ${activeCount} active overrides preserved.`, 'ok');
+  rerunPipelineWithCurrentOverrides();
+}
+
+// ---------- ETHERSCAN V2 FETCHER ----------
+async function fetchEtherscanV2(apiKey, chainId, address, action) {
+  const cacheKey = `esv2_${chainId}_${action}_${address}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) { log(`  cache hit: ${action} ${address.slice(0,10)}…`, 'info'); return cached; }
+
+  const all = [];
+  let startblock = 0;
+  while (true) {
+    const url = `https://api.etherscan.io/v2/api?chainid=${chainId}&module=account&action=${action}&address=${address}&startblock=${startblock}&endblock=99999999&sort=asc&apikey=${apiKey}`;
+    const r = await fetch(url);
+    const data = await r.json();
+    if (data.status !== '1' && data.message !== 'No transactions found') {
+      if (data.message === 'NOTOK') throw new Error(`Etherscan V2 (${action}): ${data.result}`);
+      break;
+    }
+    const results = data.result || [];
+    if (!results.length) break;
+    all.push(...results);
+    if (results.length < 10000) break;
+    startblock = parseInt(results[results.length - 1].blockNumber) + 1;
+    await sleep(250);
+  }
+  cacheSet(cacheKey, all);
+  return all;
+}
+
+// ---------- MEGANODE BSC FETCHER ----------
+async function fetchMegaNodeBSC(apiKey, address) {
+  const cacheKey = `mn_bsc_${address}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) { log(`  cache hit: meganode ${address.slice(0,10)}…`, 'info'); return cached; }
+
+  const url = `https://bsc-mainnet.nodereal.io/v1/${apiKey}`;
+  const all = [];
+  for (const direction of ['fromAddress', 'toAddress']) {
+    let pageKey = null;
+    let pageCount = 0;
+    while (true) {
+      const params = {
+        category: ['external', '20'],
+        fromBlock: '0x0',
+        toBlock: 'latest',
+        order: 'asc',
+        excludeZeroValue: false,
+        maxCount: '0x3e8',
+        withMetadata: true,
+        [direction]: address,
+      };
+      if (pageKey) params.pageKey = pageKey;
+      const body = { jsonrpc: '2.0', method: 'nr_getAssetTransfers', params: [params], id: 1 };
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) throw new Error(`MegaNode HTTP ${r.status}`);
+      const data = await r.json();
+      if (data.error) throw new Error(`MegaNode: ${data.error.message}`);
+      const result = data.result || {};
+      const transfers = result.transfers || [];
+      transfers.forEach(t => { t._direction = direction === 'fromAddress' ? 'out' : 'in'; });
+      all.push(...transfers);
+      pageKey = result.pageKey;
+      pageCount++;
+      if (!pageKey || pageCount > 20) break;
+      await sleep(300);
+    }
+  }
+  cacheSet(cacheKey, all);
+  return all;
+}
+
+// ---------- HELIUS SOL FETCHER ----------
+async function fetchHelius(apiKey, address) {
+  const cacheKey = `helius_${address}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) { log(`  cache hit: helius ${address.slice(0,10)}…`, 'info'); return cached; }
+
+  const all = [];
+  let before = null;
+  const LIMIT = 100;
+  let pageCount = 0;
+  while (true) {
+    let url = `https://api-mainnet.helius-rpc.com/v0/addresses/${address}/transactions?api-key=${apiKey}&limit=${LIMIT}`;
+    if (before) url += `&before=${before}`;
+    const r = await fetch(url);
+    if (!r.ok) {
+      if (r.status === 429) { await sleep(2000); continue; }
+      throw new Error(`Helius HTTP ${r.status}`);
+    }
+    const data = await r.json();
+    if (!Array.isArray(data) || data.length === 0) break;
+    all.push(...data);
+    if (data.length < LIMIT) break;
+    before = data[data.length - 1].signature;
+    pageCount++;
+    if (pageCount > 50) break;
+    await sleep(150);
+  }
+  cacheSet(cacheKey, all);
+  return all;
+}
+
+// ---------- JUPITER TOKEN LIST (for Solana token names) ----------
+// Jupiter maintains a free public list of verified Solana tokens with metadata.
+// One fetch per run, cached 24h. Used to resolve mint addresses to human-readable names.
+let JUP_TOKEN_MAP = null;
+async function loadJupiterTokenList() {
+  if (JUP_TOKEN_MAP) return JUP_TOKEN_MAP;
+  const cacheKey = 'jup_tokens';
+  const cached = cacheGet(cacheKey);
+  const now = Date.now();
+  if (cached && cached.ts && (now - cached.ts < 86400000)) {
+    JUP_TOKEN_MAP = cached.map;
+    return JUP_TOKEN_MAP;
+  }
+  try {
+    log('  Fetching Jupiter verified token list (V2)…', 'info');
+    const r = await fetch('https://lite-api.jup.ag/tokens/v2/tag?query=verified');
+    if (!r.ok) throw new Error(`Jupiter HTTP ${r.status}`);
+    const arr = await r.json();
+    JUP_TOKEN_MAP = {};
+    for (const t of arr) {
+      // V2 uses "id" as the mint address (V1 used "address")
+      const mint = t.id || t.address;
+      if (mint) JUP_TOKEN_MAP[mint] = { symbol: t.symbol || 'UNKNOWN', name: t.name || '', decimals: t.decimals };
+    }
+    cacheSet(cacheKey, { ts: now, map: JUP_TOKEN_MAP });
+    log(`  Loaded ${Object.keys(JUP_TOKEN_MAP).length} verified Solana tokens from Jupiter.`, 'ok');
+  } catch (e) {
+    log(`  Jupiter token list fetch failed: ${e.message} (not critical — will use mint shortcodes)`, 'warn');
+    JUP_TOKEN_MAP = {};
+  }
+  return JUP_TOKEN_MAP;
+}
+
+// ---------- JUPITER V2 SEARCH (fallback for unverified mints) ----------
+// For mints not in the verified list (pump.fun, brand-new tokens, etc.), we can
+// search Jupiter V2 by mint address to get name/symbol for unverified tokens too.
+// Cached per-mint with null as a valid cached "not found" result.
+async function searchJupiterMint(mintAddress) {
+  const cacheKey = CACHE_PREFIX + `jupsearch_${mintAddress}`;
+  const rawCached = localStorage.getItem(cacheKey);
+  if (rawCached !== null) {
+    try { return JSON.parse(rawCached); } catch {}
+  }
+  try {
+    const r = await fetch(`https://lite-api.jup.ag/tokens/v2/search?query=${encodeURIComponent(mintAddress)}`);
+    if (!r.ok) {
+      localStorage.setItem(cacheKey, JSON.stringify(null));
+      return null;
+    }
+    const arr = await r.json();
+    if (!Array.isArray(arr) || arr.length === 0) {
+      localStorage.setItem(cacheKey, JSON.stringify(null));
+      return null;
+    }
+    // Find exact mint address match (search may return related tokens too)
+    const match = arr.find(t => (t.id || t.address) === mintAddress);
+    if (!match) {
+      localStorage.setItem(cacheKey, JSON.stringify(null));
+      return null;
+    }
+    const result = { symbol: match.symbol || 'UNKNOWN', name: match.name || '', decimals: match.decimals };
+    localStorage.setItem(cacheKey, JSON.stringify(result));
+    return result;
+  } catch {
+    localStorage.setItem(cacheKey, JSON.stringify(null));
+    return null;
+  }
+}
+
+// Second-pass resolver: after all Solana txs are fetched, look up unknown mints
+// via Jupiter V2 search and update their display names in place.
+async function resolveUnknownSolTokens(txs) {
+  const unknownMints = new Set();
+  for (const t of txs) {
+    if (t.chain !== 'sol' || !t.assetKey || t.assetKey === 'native') continue;
+    // Anything that still looks like a truncated mint (ends with ellipsis) is unknown
+    if (t.asset && t.asset.endsWith('…')) unknownMints.add(t.assetKey);
+  }
+  if (unknownMints.size === 0) return;
+  log(`Resolving ${unknownMints.size} unknown Solana token names via Jupiter V2 search…`, 'info');
+  let resolved = 0;
+  for (const mint of unknownMints) {
+    const info = await searchJupiterMint(mint);
+    if (info && info.symbol && info.symbol !== 'UNKNOWN') {
+      // Same reserved-symbol guard as normalizeSolTx. A Jupiter search result
+      // claiming this mint is "SOL" or "USDC" must be disambiguated to prevent
+      // FIFO queue collision with real canonical tokens.
+      const symbol = SOLANA_RESERVED_SYMBOLS.has(info.symbol)
+        ? `${info.symbol}(${mint.slice(0, 4)}…)`
+        : info.symbol;
+      txs.forEach(t => {
+        if (t.chain === 'sol' && t.assetKey === mint) t.asset = symbol;
+      });
+      resolved++;
+    }
+    await sleep(120); // be respectful to the free endpoint
+  }
+  log(`  Resolved ${resolved} of ${unknownMints.size} unknown mints.`, resolved > 0 ? 'ok' : 'warn');
+}
+
+// ---------- NORMALIZERS ----------
+function normalizeEvmTx(chain, address, tx, kind) {
+  const addr = address.toLowerCase();
+  const from = (tx.from || '').toLowerCase();
+  const to = (tx.to || '').toLowerCase();
+  const ts = parseInt(tx.timeStamp) * 1000;
+  let assetKey, qty;
+  if (kind === 'token') {
+    assetKey = (tx.contractAddress || '').toLowerCase();
+    const decimals = parseInt(tx.tokenDecimal || '18');
+    qty = Number(tx.value) / Math.pow(10, decimals);
+  } else {
+    assetKey = 'native';
+    qty = Number(tx.value) / 1e18;
+  }
+  const known = KNOWN_ASSETS[chain][assetKey];
+  const symbol = known ? known.symbol : (tx.tokenSymbol || 'UNKNOWN');
+  const direction = (from === addr) ? 'out' : (to === addr) ? 'in' : 'other';
+  if (direction === 'other') return null;
+  return {
+    id: `${chain}:${tx.hash}:${kind}:${direction}:${assetKey}`,
+    chain, wallet: address, ts, date: new Date(ts).toISOString().slice(0,10),
+    txHash: tx.hash, direction, type: direction === 'in' ? 'buy' : 'sell',
+    asset: symbol, assetKey, priceId: known ? known.priceId : null, qty,
+    fromAddr: from, toAddr: to,
+    usdPrice: null, usdValue: null, status: 'pending', note: '',
+  };
+}
+
+function normalizeMegaNodeTx(address, tx) {
+  const addr = address.toLowerCase();
+  const from = (tx.from || '').toLowerCase();
+  const to = (tx.to || '').toLowerCase();
+  const direction = tx._direction || (from === addr ? 'out' : 'in');
+  const ts = tx.metadata && tx.metadata.blockTimestamp ? new Date(tx.metadata.blockTimestamp).getTime() : null;
+  if (!ts) return null;
+  let assetKey, qty, symbol;
+  if (tx.category === 'external') {
+    assetKey = 'native';
+    qty = Number(tx.value);
+    symbol = 'BNB';
+  } else {
+    assetKey = (tx.rawContract && tx.rawContract.address || '').toLowerCase();
+    qty = Number(tx.value);
+    symbol = tx.asset || 'UNKNOWN';
+  }
+  const known = KNOWN_ASSETS.bsc[assetKey];
+  if (known) symbol = known.symbol;
+  return {
+    id: `bsc:${tx.hash}:${assetKey}:${direction}`,
+    chain: 'bsc', wallet: address, ts, date: new Date(ts).toISOString().slice(0,10),
+    txHash: tx.hash, direction, type: direction === 'in' ? 'buy' : 'sell',
+    asset: symbol, assetKey, priceId: known ? known.priceId : null, qty,
+    fromAddr: from, toAddr: to,
+    usdPrice: null, usdValue: null, status: 'pending', note: '',
+  };
+}
+
+// Reserved Solana system symbols. If a non-canonical mint has a Jupiter-listed
+// symbol matching one of these, it's an impersonator (typically a pump.fun scam
+// token named "SOL" or "USDC" to trick users). Display name gets disambiguated
+// so it can't collide with real SOL/USDC/etc. in the FIFO engine.
+const SOLANA_RESERVED_SYMBOLS = new Set(['SOL', 'WSOL', 'USDC', 'USDT']);
+
+function normalizeSolTx(address, tx) {
+  const out = [];
+  const ts = tx.timestamp * 1000;
+  (tx.nativeTransfers || []).forEach((nt, i) => {
+    if (nt.fromUserAccount !== address && nt.toUserAccount !== address) return;
+    const direction = nt.fromUserAccount === address ? 'out' : 'in';
+    out.push({
+      id: `sol:${tx.signature}:native:${i}:${direction}`,
+      chain: 'sol', wallet: address, ts, date: new Date(ts).toISOString().slice(0,10),
+      txHash: tx.signature, direction, type: direction === 'in' ? 'buy' : 'sell',
+      asset: 'SOL', assetKey: 'native', priceId: 'solana', qty: nt.amount / 1e9,
+      fromAddr: nt.fromUserAccount, toAddr: nt.toUserAccount,
+      usdPrice: null, usdValue: null, status: 'pending', note: '',
+      isSwap: tx.type === 'SWAP',
+    });
+  });
+  (tx.tokenTransfers || []).forEach((tt, i) => {
+    if (tt.fromUserAccount !== address && tt.toUserAccount !== address) return;
+    const direction = tt.fromUserAccount === address ? 'out' : 'in';
+    const known = KNOWN_ASSETS.sol[tt.mint];
+    const jup = (!known && JUP_TOKEN_MAP) ? JUP_TOKEN_MAP[tt.mint] : null;
+    let symbol;
+    if (known) {
+      symbol = known.symbol;
+    } else if (jup) {
+      // Guard against pump.fun impersonator tokens whose Jupiter-listed symbol
+      // matches a reserved system name (SOL, USDC, USDT, WSOL). Without this
+      // guard, the display name collides with real SOL and causes FIFO confusion.
+      symbol = SOLANA_RESERVED_SYMBOLS.has(jup.symbol)
+        ? `${jup.symbol}(${tt.mint.slice(0, 4)}…)`
+        : jup.symbol;
+    } else {
+      symbol = tt.mint.slice(0, 6) + '…';
+    }
+    out.push({
+      id: `sol:${tx.signature}:spl:${i}:${direction}:${tt.mint}`,
+      chain: 'sol', wallet: address, ts, date: new Date(ts).toISOString().slice(0,10),
+      txHash: tx.signature, direction, type: direction === 'in' ? 'buy' : 'sell',
+      asset: symbol,
+      assetKey: tt.mint, priceId: known ? known.priceId : null, qty: tt.tokenAmount,
+      fromAddr: tt.fromUserAccount, toAddr: tt.toUserAccount,
+      usdPrice: null, usdValue: null, status: 'pending', note: '',
+      isSwap: tx.type === 'SWAP',
+    });
+  });
+  return out;
+}
+
+// ---------- CRYPTOCOMPARE SYMBOL MAPPING ----------
+// Maps our canonical priceId strings (stored in KNOWN_ASSETS[chain][asset].priceId)
+// to CryptoCompare's ticker symbols. The priceId strings happen to use CoinGecko's
+// ID format by convention, but we no longer call the CoinGecko API — CryptoCompare
+// is the sole price source.
+const CC_SYMBOLS = {
+  'ethereum': 'ETH',
+  'solana': 'SOL',
+  'bitcoin': 'BTC',
+  'binancecoin': 'BNB',
+  'tether': 'USDT',
+  'usd-coin': 'USDC',
+  'dai': 'DAI',
+  'weth': 'WETH',
+  'wrapped-bitcoin': 'WBTC',
+  'chainlink': 'LINK',
+  'uniswap': 'UNI',
+  'aave': 'AAVE',
+  'binance-usd': 'BUSD',
+  'pancakeswap-token': 'CAKE',
+};
+
+// ---------- CRYPTOCOMPARE PRICE LOOKUP ----------
+// Uses the /data/v2/histoday endpoint which gives full historical depth (years of data)
+// on the free tier — unlike CoinGecko's Demo tier which is limited to the last 365 days.
+// Cache key includes a "keyed"/"nokey" flag so that changing key states invalidates stale caches.
+async function getPriceUSD(priceId, date, ccApiKey) {
+  if (!priceId) return null;
+  const symbol = CC_SYMBOLS[priceId];
+  if (!symbol) {
+    // No mapping for this CoinGecko ID — we don't know what to ask CryptoCompare for
+    return null;
+  }
+  const keyFlag = ccApiKey ? 'keyed' : 'nokey';
+  const cacheKey = CACHE_PREFIX + `ccprice_${keyFlag}_${symbol}_${date}`;
+  const rawCached = localStorage.getItem(cacheKey);
+  if (rawCached !== null) {
+    try { return JSON.parse(rawCached); } catch {}
+  }
+  // Convert YYYY-MM-DD to unix seconds at end-of-day UTC (23:59:59 UTC on that date)
+  // so histoday returns the daily candle for that day as its last entry.
+  const [y, m, d] = date.split('-').map(Number);
+  const endOfDayUtc = Math.floor(Date.UTC(y, m - 1, d, 23, 59, 59) / 1000);
+  const url = `https://min-api.cryptocompare.com/data/v2/histoday?fsym=${encodeURIComponent(symbol)}&tsym=USD&limit=1&toTs=${endOfDayUtc}`;
+  const headers = {};
+  if (ccApiKey) headers['Authorization'] = `Apikey ${ccApiKey}`;
+  try {
+    const r = await fetch(url, { headers });
+    if (!r.ok) {
+      if (r.status === 429) {
+        await sleep(5000);
+        return getPriceUSD(priceId, date, ccApiKey);
+      }
+      if (r.status === 401 || r.status === 403) {
+        log(`  CryptoCompare HTTP ${r.status} — API key rejected`, 'err');
+      }
+      localStorage.setItem(cacheKey, JSON.stringify(null));
+      await sleep(300);
+      return null;
+    }
+    const data = await r.json();
+    // Expected shape: { Response: "Success", Data: { Data: [ {time, close, ...}, ... ] } }
+    if (data.Response !== 'Success' || !data.Data || !Array.isArray(data.Data.Data)) {
+      localStorage.setItem(cacheKey, JSON.stringify(null));
+      await sleep(300);
+      return null;
+    }
+    // Find the entry whose timestamp matches our target date (within 12 hours)
+    // When limit=1, we get 2 candles: the target day and the day before. Take the one
+    // that matches our target unix day.
+    const targetDayStart = Math.floor(Date.UTC(y, m - 1, d, 0, 0, 0) / 1000);
+    const entry = data.Data.Data.find(e => e.time === targetDayStart) || data.Data.Data[data.Data.Data.length - 1];
+    const price = entry && typeof entry.close === 'number' && entry.close > 0 ? entry.close : null;
+    localStorage.setItem(cacheKey, JSON.stringify(price));
+    await sleep(300);
+    return price;
+  } catch (e) {
+    localStorage.setItem(cacheKey, JSON.stringify(null));
+    await sleep(300);
+    return null;
+  }
+}
+
+// ---------- SWAP-PAIR PRICE DERIVATION ----------
+// After CryptoCompare has priced every known coin, some unknown tokens (pump.fun
+// memecoins, brand-new tokens not yet on price aggregators) may still be unpriced.
+// But most of those tokens entered/left the wallet via a DEX swap where the
+// counterparty side IS priceable (SOL, USDC, etc.).
+//
+// Per IRS guidance for crypto-to-crypto trades, fair market value is the value
+// of what was given up (or received). So if the user swapped $10.89 worth of SOL
+// for 1,193,950 "6fig" tokens, those tokens have a $10.89 basis — which is both
+// the IRS-correct answer AND free to compute without any external API.
+//
+// This pass groups transactions by txHash, identifies swaps with one unpriced
+// side and at least one priced side, and assigns the priced-side USD total to
+// the unpriced side(s). Per-unit price is derived from USD value / quantity.
+//
+// NOTE: Internal transfer fees are included in the priced side totals, which
+// is IRS-correct — transaction fees are part of cost basis for capital assets.
+function deriveSwapPairPrices(txs) {
+  // Group by txHash
+  const byTxHash = new Map();
+  for (const tx of txs) {
+    if (tx.status === 'internal') continue;
+    if (!tx.txHash) continue;
+    if (!byTxHash.has(tx.txHash)) byTxHash.set(tx.txHash, []);
+    byTxHash.get(tx.txHash).push(tx);
+  }
+
+  let derived = 0;
+  let multiSplitCount = 0;
+  let skippedAmbiguous = 0;
+  let skippedOneSided = 0;
+
+  for (const [txHash, group] of byTxHash) {
+    if (group.length < 2) continue; // Single-row transfer, not a swap
+
+    // Split by direction and priced status
+    const pricedOuts   = group.filter(t => t.direction === 'out' && t.usdValue != null);
+    const pricedIns    = group.filter(t => t.direction === 'in'  && t.usdValue != null);
+    const unpricedOuts = group.filter(t => t.direction === 'out' && t.usdPrice == null);
+    const unpricedIns  = group.filter(t => t.direction === 'in'  && t.usdPrice == null);
+
+    // Nothing unpriced in this tx — skip
+    if (unpricedOuts.length === 0 && unpricedIns.length === 0) continue;
+
+    // Case A: unpriced IN(s), all OUTs priced → buy/acquisition swap
+    // Example: spent SOL, received a memecoin
+    if (unpricedIns.length > 0 && unpricedOuts.length === 0 && pricedOuts.length > 0) {
+      const totalOutUsd = pricedOuts.reduce((s, t) => s + t.usdValue, 0);
+      if (totalOutUsd <= 0) { skippedAmbiguous++; continue; }
+
+      if (unpricedIns.length === 1) {
+        // Clean single-target swap — assign full counterpart value
+        const target = unpricedIns[0];
+        target.usdValue = totalOutUsd;
+        target.usdPrice = target.qty > 0 ? totalOutUsd / target.qty : 0;
+        target.status = 'ok';
+        target.note = `Price derived from swap counterpart ($${totalOutUsd.toFixed(2)} in SOL/stable outflows)`;
+        derived++;
+      } else {
+        // Multiple unpriced receipts — split proportionally by qty as best effort
+        const totalQty = unpricedIns.reduce((s, t) => s + t.qty, 0);
+        if (totalQty <= 0) { skippedAmbiguous++; continue; }
+        for (const target of unpricedIns) {
+          const share = target.qty / totalQty;
+          const shareUsd = totalOutUsd * share;
+          target.usdValue = shareUsd;
+          target.usdPrice = target.qty > 0 ? shareUsd / target.qty : 0;
+          target.status = 'ok';
+          target.note = `Price derived from multi-target swap (split by qty: ${(share*100).toFixed(1)}% of $${totalOutUsd.toFixed(2)})`;
+          derived++;
+        }
+        multiSplitCount++;
+      }
+      continue;
+    }
+
+    // Case B: unpriced OUT(s), all INs priced → sell/disposal swap
+    // Example: sold a memecoin, received SOL
+    if (unpricedOuts.length > 0 && unpricedIns.length === 0 && pricedIns.length > 0) {
+      const totalInUsd = pricedIns.reduce((s, t) => s + t.usdValue, 0);
+      if (totalInUsd <= 0) { skippedAmbiguous++; continue; }
+
+      if (unpricedOuts.length === 1) {
+        const target = unpricedOuts[0];
+        target.usdValue = totalInUsd;
+        target.usdPrice = target.qty > 0 ? totalInUsd / target.qty : 0;
+        target.status = 'ok';
+        target.note = `Price derived from swap counterpart ($${totalInUsd.toFixed(2)} in SOL/stable inflows)`;
+        derived++;
+      } else {
+        const totalQty = unpricedOuts.reduce((s, t) => s + t.qty, 0);
+        if (totalQty <= 0) { skippedAmbiguous++; continue; }
+        for (const target of unpricedOuts) {
+          const share = target.qty / totalQty;
+          const shareUsd = totalInUsd * share;
+          target.usdValue = shareUsd;
+          target.usdPrice = target.qty > 0 ? shareUsd / target.qty : 0;
+          target.status = 'ok';
+          target.note = `Price derived from multi-source swap (split by qty: ${(share*100).toFixed(1)}% of $${totalInUsd.toFixed(2)})`;
+          derived++;
+        }
+        multiSplitCount++;
+      }
+      continue;
+    }
+
+    // Case C: unpriced on BOTH sides — pure token-for-token swap of unknowns.
+    // Can't derive anything without an external price source. Leave for review.
+    if (unpricedIns.length > 0 && unpricedOuts.length > 0) {
+      skippedAmbiguous++;
+      continue;
+    }
+
+    // Case D: one-sided unpriced (no counterpart). Airdrop, gift, tip.cc withdrawal,
+    // or disposal with no consideration. Not swap-derivable.
+    skippedOneSided++;
+  }
+
+  return { derived, multiSplitCount, skippedAmbiguous, skippedOneSided };
+}
+
+// ---------- UNPRICED OVERRIDE APPLICATION ----------
+// After CryptoCompare and swap-pair derivation, some rows are still unpriced.
+// These come in two flavors that the user must manually attest values for:
+//   1) Orphan RECEIPTS — incoming tokens with no cost basis (airdrops, gifts,
+//      tip.cc withdrawals, exchange transfers). User sets the cost basis they paid.
+//   2) Unpriced DISPOSALS — outgoing tokens with no proceeds value (memecoin sells
+//      where neither CC nor swap-pair derivation could find a price). User sets
+//      the proceeds they received.
+//
+// Both are stored in the SAME override storage as Phase 4 disposal-orphan overrides,
+// using the same key format (txHash:assetKey:direction). The action field
+// distinguishes them: set_basis for receipts, set_proceeds for disposals.
+//
+// Like FIFO override application, this is group-aware: when multiple rows share
+// the same override key (a Solana tx with multiple outflows/inflows of the same
+// asset), the override value is distributed proportionally across the rows.
+function applyUnpricedOverrides(txs) {
+  const overrides = loadBasisOverrides();
+  let applied = 0, basisCount = 0, proceedsCount = 0;
+
+  // Pre-compute total qty per override key for proportional distribution
+  const keyToTotalQty = {};
+  for (const tx of txs) {
+    if (tx.status === 'internal') continue;
+    if (tx.usdPrice != null) continue;  // already priced — skip
+    const k = getOverrideKey(tx);
+    if (overrides[k]) {
+      keyToTotalQty[k] = (keyToTotalQty[k] || 0) + tx.qty;
+    }
+  }
+
+  for (const tx of txs) {
+    if (tx.status === 'internal') continue;
+    if (tx.usdPrice != null) continue;
+    const k = getOverrideKey(tx);
+    const ov = overrides[k];
+    if (!ov) continue;
+
+    const groupQty = keyToTotalQty[k] || tx.qty;
+    let totalValue;
+    if (ov.action === 'zero_basis' || ov.action === 'zero_proceeds') {
+      totalValue = 0;
+    } else if (ov.action === 'set_basis' || ov.action === 'set_proceeds') {
+      totalValue = parseFloat(ov.basisUsd) || 0;
+    } else {
+      continue; // ignore action — leave row unpriced
+    }
+
+    const perUnitValue = groupQty > 0 ? totalValue / groupQty : 0;
+    const thisRowValue = tx.qty * perUnitValue;
+    tx.usdPrice = perUnitValue;
+    tx.usdValue = thisRowValue;
+    tx.status = 'ok';
+    tx.appliedOverride = ov;
+    tx.unpricedOverrideApplied = true;  // distinguishes Phase 3 (price from override) from Phase 4 (price from CC/swap-pair, override added basis)
+    if (tx.direction === 'in') {
+      tx.note = (ov.action === 'zero_basis')
+        ? `⚠ Zero-basis override applied: receipt treated as $0 cost basis`
+        : `Manual basis applied: $${thisRowValue.toFixed(2)} (group total $${totalValue.toFixed(2)})`;
+      basisCount++;
+    } else {
+      tx.note = (ov.action === 'zero_proceeds')
+        ? `⚠ Zero-proceeds override applied: disposal treated as $0 proceeds`
+        : `Manual proceeds applied: $${thisRowValue.toFixed(2)} (group total $${totalValue.toFixed(2)})`;
+      proceedsCount++;
+    }
+    applied++;
+  }
+
+  return { applied, basisCount, proceedsCount };
+}
+
+// ---------- INTERNAL TRANSFER DETECTOR ----------
+function tagInternalTransfers(txs, userAddrs) {
+  txs.forEach(t => {
+    const f = (t.fromAddr || '').toLowerCase();
+    const to = (t.toAddr || '').toLowerCase();
+    if (userAddrs.has(f) && userAddrs.has(to)) {
+      t.status = 'internal';
+      t.note = 'Transfer between your own wallets — non-taxable';
+    }
+  });
+}
+
+// ---------- FIFO ENGINE ----------
+function runFIFO(txs) {
+  const sorted = [...txs].sort((a,b) => a.ts - b.ts);
+  const queues = {};
+  const gains = [];
+  const overrides = loadBasisOverrides();
+
+  // Pre-compute total disposal qty per override key. When a single Solana tx has
+  // multiple SOL outflows (which Helius normalizes as separate rows), they share
+  // the same override key (txHash:assetKey:direction). The user's stored basis
+  // is for the GROUP, not each row individually, so we need to distribute it
+  // proportionally rather than apply the full basis to every row.
+  const keyToTotalQty = {};
+  for (const tx of txs) {
+    if (tx.direction !== 'out' || tx.status === 'internal') continue;
+    const k = getOverrideKey(tx);
+    if (overrides[k]) {
+      keyToTotalQty[k] = (keyToTotalQty[k] || 0) + tx.qty;
+    }
+  }
+
+  // Clear any previously-set appliedOverride flags (for re-runs)
+  for (const tx of txs) { if (tx.appliedOverride) delete tx.appliedOverride; }
+
+  for (const tx of sorted) {
+    if (tx.status === 'internal') continue;
+    if (tx.usdPrice == null) {
+      if (tx.status !== 'review') { tx.status = 'review'; tx.note = tx.note || 'No price data'; }
+      continue;
+    }
+    // Use canonical identifier (priceId for priced tokens, mint/assetKey for unknowns)
+    // instead of display symbol. This prevents pump.fun impersonator tokens whose
+    // display name matches a real asset (e.g. a memecoin named "SOL") from being
+    // dumped into the same FIFO queue as the legitimate asset. Native SOL and WSOL
+    // still unify correctly because both have priceId='solana'.
+    const assetId = tx.priceId || tx.assetKey || tx.asset;
+    const key = `${tx.wallet}|${assetId}`;
+    if (!queues[key]) queues[key] = [];
+    if (tx.direction === 'in') {
+      // Propagate manual flag from appliedOverride (if a receipt got its basis from
+      // a Phase 3 manual override) so future disposals matched against this lot
+      // will be marked manual in the 8949.
+      queues[key].push({
+        qtyRemaining: tx.qty, usdPrice: tx.usdPrice,
+        ts: tx.ts, date: tx.date, txHash: tx.txHash,
+        manual: !!tx.appliedOverride,
+      });
+      tx.status = 'ok';
+    } else {
+      let qtyToSell = tx.qty;
+      const matches = [];
+      while (qtyToSell > 1e-12 && queues[key] && queues[key].length > 0) {
+        const lot = queues[key][0];
+        const take = Math.min(qtyToSell, lot.qtyRemaining);
+        const basis = take * lot.usdPrice;
+        const proceeds = take * tx.usdPrice;
+        const gain = proceeds - basis;
+        const holdDays = (tx.ts - lot.ts) / 86400000;
+        const term = holdDays > 365 ? 'long' : 'short';
+        matches.push({ asset: tx.asset, qty: take, acquiredDate: lot.date, soldDate: tx.date, basis, proceeds, gain, term, manual: !!lot.manual });
+        lot.qtyRemaining -= take;
+        qtyToSell -= take;
+        if (lot.qtyRemaining <= 1e-12) queues[key].shift();
+      }
+      // FIFO ran out of basis. Check for a manual override before flagging.
+      if (qtyToSell > 1e-9) {
+        const ovKey = getOverrideKey(tx);
+        const ov = overrides[ovKey];
+        if (ov && (ov.action === 'set_basis' || ov.action === 'zero_basis')) {
+          // Distribute the override basis across all disposal rows sharing this key.
+          // Per-unit basis = total override basis / total qty across the group.
+          // This row's contribution = qtyToSell × per-unit.
+          const phantomTotalBasis = ov.action === 'zero_basis' ? 0 : (parseFloat(ov.basisUsd) || 0);
+          const groupQty = keyToTotalQty[ovKey] || tx.qty;
+          const perUnitBasis = groupQty > 0 ? phantomTotalBasis / groupQty : 0;
+          const basis = qtyToSell * perUnitBasis;
+          const proceeds = qtyToSell * tx.usdPrice;
+          const gain = proceeds - basis;
+          // Synthetic acquisition date: same day as disposal (held for ~0 days = short-term).
+          // The user attesting to manual basis is implicitly accepting short-term treatment
+          // unless they also override the holding period — future feature.
+          matches.push({
+            asset: tx.asset, qty: qtyToSell,
+            acquiredDate: tx.date, soldDate: tx.date,
+            basis, proceeds, gain, term: 'short', manual: true,
+            manualNote: ov.action === 'zero_basis' ? 'Zero-basis override' : 'Manual basis override',
+          });
+          qtyToSell = 0;
+          tx.status = 'ok';
+          tx.appliedOverride = ov;  // mark for TurboTax export — only applied overrides emit synthetic Buys
+          tx.note = ov.action === 'zero_basis'
+            ? `⚠ Zero-basis override applied: $${proceeds.toFixed(2)} treated as 100% gain`
+            : `Manual basis override applied: $${basis.toFixed(2)} basis (group total $${phantomTotalBasis.toFixed(2)})`;
+        } else if (tx.unpricedOverrideApplied) {
+          // Phase 3 disposal: the user already attested proceeds via the Unpriced panel,
+          // but FIFO has no acquisition lot for the unmatched portion. Treat as zero
+          // basis automatically — the user's intent was "I dealt with this row in Phase 3,
+          // don't double-flag it as a missing-basis orphan in Phase 4". Generates a
+          // matched 8949 row with the user-attested proceeds (often $0 for zero_proceeds)
+          // and $0 basis for the unmatched qty. This documents the disposal in the audit
+          // trail without adding a separate Phase 4 review burden.
+          const proceeds = qtyToSell * tx.usdPrice;
+          matches.push({
+            asset: tx.asset, qty: qtyToSell,
+            acquiredDate: tx.date, soldDate: tx.date,
+            basis: 0, proceeds, gain: proceeds, term: 'short', manual: true,
+            manualNote: 'Phase 3 disposal, zero basis (no acquisition lot for unmatched qty)',
+          });
+          qtyToSell = 0;
+          tx.status = 'ok';
+          // Re-set appliedOverride so stale detection sees this as active.
+          // (FIFO clears appliedOverride at the start of every run; Phase 3 rows that
+          //  bypass the Phase 4 override branch would otherwise appear "orphaned" in
+          //  the active-flag check used by stale detection and the Phase 4 stats line.)
+          if (ov) tx.appliedOverride = ov;
+        } else {
+          tx.status = 'review';
+          tx.note = `Missing cost basis for ${qtyToSell.toFixed(6)} ${tx.asset} — no matching acquisition lot`;
+        }
+      } else {
+        tx.status = 'ok';
+      }
+      gains.push(...matches);
+    }
+  }
+  return gains;
+}
+
+// ---------- MAIN RUN ----------
+async function run() {
+  clearLog();
+  STATE = { rawTxs: [], gains: [], userAddrs: new Set() };
+  document.getElementById('resultsPanel').style.display = 'none';
+
+  const taxYear = parseInt(document.getElementById('taxYear').value);
+  const ethKey = document.getElementById('ethKey').value.trim();
+  const bscKey = document.getElementById('bscKey').value.trim();
+  const solKey = document.getElementById('solKey').value.trim();
+  const ccKey = document.getElementById('ccKey').value.trim();
+  const addrText = document.getElementById('addresses').value.trim();
+
+  if (!addrText) { log('No wallet addresses provided.', 'err'); return; }
+
+  const addrList = [];
+  addrText.split('\n').forEach(line => {
+    line = line.trim();
+    if (!line || line.startsWith('#')) return;
+    const m = line.match(/^(eth|bsc|sol):(.+)$/i);
+    if (!m) { log(`Skipping malformed line: ${line}`, 'warn'); return; }
+    const chain = m[1].toLowerCase();
+    const addr = m[2].trim();
+    addrList.push({ chain, addr });
+    STATE.userAddrs.add(addr.toLowerCase());
+  });
+  log(`Parsed ${addrList.length} wallet addresses.`, 'ok');
+
+  for (const { chain, addr } of addrList) {
+    log(`Fetching ${chain.toUpperCase()} ${addr.slice(0,10)}…`, 'info');
+    try {
+      if (chain === 'eth') {
+        if (!ethKey) { log('  Missing Etherscan V2 key — skipping', 'warn'); continue; }
+        const [n, itl, tok] = await Promise.all([
+          fetchEtherscanV2(ethKey, 1, addr, 'txlist'),
+          fetchEtherscanV2(ethKey, 1, addr, 'txlistinternal'),
+          fetchEtherscanV2(ethKey, 1, addr, 'tokentx'),
+        ]);
+        log(`  ${n.length} normal, ${itl.length} internal, ${tok.length} token txs`, 'info');
+        n.forEach(t => { const r = normalizeEvmTx('eth', addr, t, 'native'); if (r) STATE.rawTxs.push(r); });
+        itl.forEach(t => { const r = normalizeEvmTx('eth', addr, t, 'internal'); if (r) STATE.rawTxs.push(r); });
+        tok.forEach(t => { const r = normalizeEvmTx('eth', addr, t, 'token'); if (r) STATE.rawTxs.push(r); });
+      } else if (chain === 'bsc') {
+        if (!bscKey) { log('  Missing MegaNode key — skipping', 'warn'); continue; }
+        const txs = await fetchMegaNodeBSC(bscKey, addr);
+        log(`  ${txs.length} BSC transfers`, 'info');
+        txs.forEach(t => { const r = normalizeMegaNodeTx(addr, t); if (r) STATE.rawTxs.push(r); });
+      } else if (chain === 'sol') {
+        if (!solKey) { log('  Missing Helius key — skipping', 'warn'); continue; }
+        await loadJupiterTokenList();
+        const txs = await fetchHelius(solKey, addr);
+        log(`  ${txs.length} Solana txs`, 'info');
+        txs.forEach(t => { normalizeSolTx(addr, t).forEach(r => STATE.rawTxs.push(r)); });
+      }
+    } catch (e) {
+      log(`  ERROR: ${e.message}`, 'err');
+    }
+  }
+  log(`Total raw records: ${STATE.rawTxs.length}`, 'ok');
+
+  // Resolve any still-unknown Solana token names via Jupiter V2 search fallback
+  await resolveUnknownSolTokens(STATE.rawTxs);
+
+  tagInternalTransfers(STATE.rawTxs, STATE.userAddrs);
+  const internalCount = STATE.rawTxs.filter(t => t.status === 'internal').length;
+  log(`Flagged ${internalCount} internal transfers as non-taxable.`, 'info');
+
+  log('Fetching historical prices from CryptoCompare…', 'info');
+  if (!ccKey) {
+    log('  ⚠ No CryptoCompare key provided — requests will be rate-limited. Get a free key at cryptocompare.com/cryptopian/api-keys.', 'warn');
+  }
+  const toPrice = STATE.rawTxs.filter(t => t.status !== 'internal' && t.priceId);
+  let priced = 0, failed = 0;
+  for (const tx of toPrice) {
+    const p = await getPriceUSD(tx.priceId, tx.date, ccKey);
+    if (p != null) { tx.usdPrice = p; tx.usdValue = p * tx.qty; priced++; }
+    else { tx.status = 'review'; tx.note = 'CryptoCompare price lookup failed'; failed++; }
+  }
+  log(`CryptoCompare: priced ${priced}, ${failed} failed.`, priced > 0 ? 'ok' : 'warn');
+
+  // ---------- SWAP-PAIR PRICE DERIVATION PASS ----------
+  // Derive prices for memecoins/unknown tokens from their swap counterparts.
+  // Handles the common case where CryptoCompare doesn't know a token but the
+  // token was acquired/disposed in a swap involving SOL or stablecoins.
+  log('Deriving memecoin prices from swap counterparts…', 'info');
+  const derivResult = deriveSwapPairPrices(STATE.rawTxs);
+  if (derivResult.derived > 0) {
+    log(`  ✓ Derived ${derivResult.derived} prices from priced swap counterparts.`, 'ok');
+  }
+  if (derivResult.multiSplitCount > 0) {
+    log(`  ${derivResult.multiSplitCount} multi-target swaps split proportionally by quantity.`, 'info');
+  }
+  if (derivResult.skippedAmbiguous > 0) {
+    log(`  ${derivResult.skippedAmbiguous} txs had unpriced tokens on both sides — can't derive, left for review.`, 'warn');
+  }
+  if (derivResult.skippedOneSided > 0) {
+    log(`  ${derivResult.skippedOneSided} one-sided unpriced rows (airdrops, tip.cc, orphan receipts) — no counterpart to derive from, left for review.`, 'info');
+  }
+
+  // ---------- UNPRICED OVERRIDE APPLICATION ----------
+  // Apply user-attested values for any remaining unpriced rows. This handles
+  // orphan receipts (need basis) and unpriced disposals (need proceeds).
+  // Without this, those rows would be flagged for review and excluded from FIFO.
+  const unpricedOverrideResult = applyUnpricedOverrides(STATE.rawTxs);
+  if (unpricedOverrideResult.applied > 0) {
+    log(`  ✓ Applied ${unpricedOverrideResult.applied} unpriced override(s) (${unpricedOverrideResult.basisCount} basis, ${unpricedOverrideResult.proceedsCount} proceeds).`, 'ok');
+  }
+
+  // Anything still unpriced → Needs Review with an explanatory note.
+  // Filter on usdPrice (not !priceId) so that swap-pair-derived prices flow through
+  // this cleanup without being clobbered.
+  STATE.rawTxs.filter(t => t.status !== 'internal' && t.usdPrice == null).forEach(t => {
+    t.status = 'review';
+    t.note = t.isSwap ? 'DEX swap — unknown token, manual review required' : 'Unknown token — not in known-asset list';
+  });
+  const unknown = STATE.rawTxs.filter(t => t.status === 'review' && t.usdPrice == null).length;
+  log(`Final pricing tally: ${priced} priced by CryptoCompare, ${derivResult.derived} derived from swaps, ${unpricedOverrideResult.applied} via manual overrides, ${unknown} still unpriced (flagged for review).`, unknown === 0 ? 'ok' : 'warn');
+
+  log('Running FIFO engine…', 'info');
+  STATE.gains = runFIFO(STATE.rawTxs);
+  log(`Generated ${STATE.gains.length} FIFO match records.`, 'ok');
+
+  renderResults(taxYear);
+  log('Done.', 'ok');
+}
+
+// ---------- RENDER ----------
+function renderResults(taxYear) {
+  document.getElementById('resultsPanel').style.display = 'block';
+  const yStart = new Date(`${taxYear}-01-01`).getTime();
+  const yEnd = new Date(`${taxYear+1}-01-01`).getTime();
+  const gainsThisYear = STATE.gains.filter(g => {
+    const t = new Date(g.soldDate).getTime();
+    return t >= yStart && t < yEnd;
+  });
+  const shortGains = gainsThisYear.filter(g => g.term === 'short');
+  const longGains = gainsThisYear.filter(g => g.term === 'long');
+  const shortTotal = shortGains.reduce((s,g) => s + g.gain, 0);
+  const longTotal = longGains.reduce((s,g) => s + g.gain, 0);
+  const reviewCount = STATE.rawTxs.filter(t => t.status === 'review').length;
+
+  document.getElementById('summary').innerHTML = `
+    <div class="stat"><div class="stat-label">Short-Term G/L (${taxYear})</div><div class="stat-value ${shortTotal>=0?'pos':'neg'}">$${shortTotal.toFixed(2)}</div></div>
+    <div class="stat"><div class="stat-label">Long-Term G/L (${taxYear})</div><div class="stat-value ${longTotal>=0?'pos':'neg'}">$${longTotal.toFixed(2)}</div></div>
+    <div class="stat"><div class="stat-label">Total Realized (${taxYear})</div><div class="stat-value ${(shortTotal+longTotal)>=0?'pos':'neg'}">$${(shortTotal+longTotal).toFixed(2)}</div></div>
+    <div class="stat"><div class="stat-label">Needs Review</div><div class="stat-value" style="color:var(--warn)">${reviewCount}</div></div>
+    <div class="stat"><div class="stat-label">Total Transactions</div><div class="stat-value">${STATE.rawTxs.length}</div></div>
+  `;
+  renderTxTable();
+  renderGainsTable(gainsThisYear);
+  renderOverridePanel();
+  renderUnpricedPanel();
+}
+
+// ---------- MANUAL BASIS OVERRIDE PANEL ----------
+// Lists orphan disposals (rows where FIFO ran out of acquisition basis), sorted
+// by approximate proceeds descending so the user sees the biggest impact first.
+// Each row gets an action dropdown (Ignore / Set basis / Zero basis) and a basis
+// input. Clicking "Save & Re-Apply" persists overrides and re-runs FIFO.
+function getOrphanDisposals() {
+  // An orphan disposal is a row that:
+  //  - direction='out' (a disposal)
+  //  - status='review' (FIFO couldn't fully match)
+  //  - note matches the "Missing cost basis" pattern
+  //  - has a usdPrice (so we can compute approximate proceeds)
+  return STATE.rawTxs.filter(t =>
+    t.direction === 'out'
+    && t.status === 'review'
+    && /Missing cost basis/.test(t.note || '')
+    && t.usdPrice != null
+  );
+}
+
+function renderOverridePanel() {
+  const tbody = document.querySelector('#overrideTable tbody');
+  const stats = document.getElementById('overrideStats');
+  const threshold = parseFloat(document.getElementById('overrideThreshold').value) || 0;
+  const overrides = loadBasisOverrides();
+  const orphans = getOrphanDisposals();
+  // Compute approximate proceeds for each orphan (qty × unit price)
+  const enriched = orphans.map(t => ({
+    tx: t,
+    key: getOverrideKey(t),
+    proceeds: t.qty * t.usdPrice,
+  }));
+  enriched.sort((a, b) => b.proceeds - a.proceeds);
+
+  // Detect STALE overrides correctly. An override is stale if no row in the current
+  // STATE.rawTxs has applied it. We check BOTH `appliedOverride` (set by FIFO for
+  // Phase 4 disposals) AND `unpricedOverrideApplied` (set by applyUnpricedOverrides
+  // for Phase 3 rows). Without checking unpricedOverrideApplied, Phase 3 rows would
+  // be marked stale because runFIFO clears appliedOverride at the start of every run
+  // and only re-sets it when the Phase 4 override branch fires.
+  const activeKeys = new Set();
+  for (const t of STATE.rawTxs) {
+    if (t.appliedOverride || t.unpricedOverrideApplied) {
+      activeKeys.add(getOverrideKey(t));
+    }
+  }
+  const staleKeys = Object.keys(overrides).filter(k => !activeKeys.has(k));
+
+  // Stats
+  let nSet = 0, nZero = 0, nIgnored = 0, nBelowThresh = 0;
+  for (const e of enriched) {
+    const ov = overrides[e.key];
+    if (e.proceeds < threshold && !ov) nBelowThresh++;
+    else if (ov && ov.action === 'set_basis') nSet++;
+    else if (ov && ov.action === 'zero_basis') nZero++;
+    else nIgnored++;
+  }
+  const totalImpact = enriched.reduce((s, e) => s + e.proceeds, 0);
+
+  // Count Phase 4 overrides currently APPLIED in the most recent FIFO run.
+  // These rows are no longer orphans (status='ok') so they don't appear in `enriched`.
+  // We count them separately so the user gets clear feedback after bulk actions
+  // (otherwise the stats would say "0 zero-basis" right after zeroing 16 rows because
+  // those 16 are no longer orphans, which is technically correct but confusing).
+  let appliedSet = 0, appliedZero = 0;
+  for (const t of STATE.rawTxs) {
+    if (t.appliedOverride && !t.unpricedOverrideApplied) {
+      if (t.appliedOverride.action === 'set_basis') appliedSet++;
+      else if (t.appliedOverride.action === 'zero_basis') appliedZero++;
+    }
+  }
+  const totalApplied = appliedSet + appliedZero;
+
+  let statsHtml = `<strong>${enriched.length}</strong> orphans, total proceeds <strong>$${totalImpact.toFixed(2)}</strong> &nbsp;|&nbsp; ${nSet} basis set, ${nZero} zero-basis, ${nIgnored} ignored, ${nBelowThresh} below $${threshold}`;
+  if (totalApplied > 0) {
+    statsHtml += `<br><span style="color:var(--ok)">✓ ${totalApplied} override(s) currently applied in this run (${appliedSet} manual basis, ${appliedZero} zero basis). These rows are matched in the 8949 and no longer appear as orphans.</span>`;
+  }
+  if (staleKeys.length > 0) {
+    statsHtml += `<br><span style="color:var(--warn)">⚠ ${staleKeys.length} stale override(s) in storage — left over from previous sessions. FIFO doesn't currently use them but they will create phantom Buy rows in the TurboTax CSV. Click <em>Clear stale only</em> below to remove them safely (your active overrides will be preserved).</span>`;
+  }
+  stats.innerHTML = statsHtml;
+
+  // Render rows above threshold OR rows with an existing override (always shown)
+  const visible = enriched.filter(e => e.proceeds >= threshold || overrides[e.key]);
+
+  if (visible.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">${enriched.length === 0 ? 'No orphan disposals — all 8949 rows have basis. ✓' : 'All orphans below threshold. Lower the threshold to see them.'}</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = visible.map(e => {
+    const t = e.tx;
+    const ov = overrides[e.key] || { action: 'ignore', basisUsd: '' };
+    const basisInputDisplay = ov.action === 'set_basis' ? '' : 'display:none;';
+    const txUrl = explorerTxUrl(t.chain, t.txHash);
+    const dateCell = txUrl
+      ? `${t.date} <a href="${txUrl}" target="_blank" rel="noopener" title="View transaction" style="color:var(--muted);text-decoration:none;font-size:10px;">🔗</a>`
+      : t.date;
+    return `<tr data-key="${escapeHtml(e.key)}">
+      <td>${dateCell}</td>
+      <td title="${escapeHtml(t.assetKey || '')}">${escapeHtml(t.asset)}</td>
+      <td class="num">${t.qty.toFixed(6)}</td>
+      <td class="num"><strong>$${e.proceeds.toFixed(2)}</strong></td>
+      <td title="${escapeHtml(t.wallet)}">${t.wallet.slice(0,8)}…</td>
+      <td>
+        <select class="ov-action" onchange="onOverrideActionChange(this)">
+          <option value="ignore"${ov.action==='ignore'?' selected':''}>Ignore</option>
+          <option value="set_basis"${ov.action==='set_basis'?' selected':''}>Set basis</option>
+          <option value="zero_basis"${ov.action==='zero_basis'?' selected':''}>Zero basis</option>
+        </select>
+      </td>
+      <td class="num">
+        <input type="number" class="ov-basis" step="0.01" min="0" value="${ov.basisUsd || ''}" placeholder="0.00" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px;${basisInputDisplay}">
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function onOverrideActionChange(selectEl) {
+  const tr = selectEl.closest('tr');
+  const basisInput = tr.querySelector('.ov-basis');
+  if (selectEl.value === 'set_basis') {
+    basisInput.style.display = '';
+    basisInput.focus();
+  } else {
+    basisInput.style.display = 'none';
+  }
+}
+
+// ---------- UNPRICED TRANSACTIONS PANEL ----------
+// Lists rows that couldn't be priced at all (orphan receipts and unpriced disposals).
+// Both share the same override storage but use direction-specific action labels.
+function getUnpricedRows() {
+  // Phase 3 panel: rows that NEED a manual price (basis for receipts, proceeds for
+  // disposals) because neither CryptoCompare nor swap-pair derivation could attach
+  // a USD value. We use the `unpricedOverrideApplied` flag (set ONLY by
+  // applyUnpricedOverrides) as the discriminator from Phase 4 rows. Previously this
+  // function used a regex against tx.note which falsely matched Phase 4 zero-basis
+  // rows (their note also says "Zero-basis override applied: …") — that bug caused
+  // Phase 4 overrides to be silently overwritten by bulk-zero-unpriced as zero_proceeds.
+  return STATE.rawTxs.filter(t =>
+    t.status !== 'internal'
+    && (
+      (t.usdPrice == null && t.status === 'review')  // truly unpriced, awaiting user action
+      || t.unpricedOverrideApplied                    // already has a Phase 3 override applied
+    )
+  );
+}
+
+function renderUnpricedPanel() {
+  const tbody = document.querySelector('#unpricedTable tbody');
+  const stats = document.getElementById('unpricedStats');
+  const overrides = loadBasisOverrides();
+  const rows = getUnpricedRows();
+
+  // Sort: receipts first (basis-setting is more impactful for future disposals),
+  // then disposals; within each, by qty descending (no proceeds to sort by)
+  rows.sort((a, b) => {
+    if (a.direction !== b.direction) return a.direction === 'in' ? -1 : 1;
+    return b.qty - a.qty;
+  });
+
+  const receipts = rows.filter(r => r.direction === 'in');
+  const disposals = rows.filter(r => r.direction === 'out');
+  let nSet = 0, nZero = 0, nIgnored = 0;
+  for (const r of rows) {
+    const ov = overrides[getOverrideKey(r)];
+    if (ov && (ov.action === 'set_basis' || ov.action === 'set_proceeds')) nSet++;
+    else if (ov && (ov.action === 'zero_basis' || ov.action === 'zero_proceeds')) nZero++;
+    else nIgnored++;
+  }
+  stats.innerHTML = `<strong>${rows.length}</strong> unpriced rows: <strong>${receipts.length}</strong> receipts (need basis) · <strong>${disposals.length}</strong> disposals (need proceeds) &nbsp;|&nbsp; ${nSet} value set, ${nZero} zero, ${nIgnored} ignored`;
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">No unpriced transactions — every row has a USD value. ✓</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(t => {
+    const key = getOverrideKey(t);
+    const ov = overrides[key] || { action: 'ignore', basisUsd: '' };
+    const isReceipt = t.direction === 'in';
+    const valueInputDisplay = (ov.action === 'set_basis' || ov.action === 'set_proceeds') ? '' : 'display:none;';
+    const txUrl = explorerTxUrl(t.chain, t.txHash);
+    const dateCell = txUrl
+      ? `${t.date} <a href="${txUrl}" target="_blank" rel="noopener" title="View transaction" style="color:var(--muted);text-decoration:none;font-size:10px;">🔗</a>`
+      : t.date;
+    const typeBadge = isReceipt
+      ? '<span class="badge badge-ok" title="Incoming — needs cost basis">IN</span>'
+      : '<span class="badge badge-warn" title="Outgoing — needs proceeds value">OUT</span>';
+    // Action options vary by direction
+    const setAction = isReceipt ? 'set_basis' : 'set_proceeds';
+    const zeroAction = isReceipt ? 'zero_basis' : 'zero_proceeds';
+    const setLabel = isReceipt ? 'Set basis' : 'Set proceeds';
+    const zeroLabel = isReceipt ? 'Zero basis' : 'Zero proceeds';
+    return `<tr data-key="${escapeHtml(key)}" data-direction="${t.direction}">
+      <td>${dateCell}</td>
+      <td title="${escapeHtml(t.assetKey || '')}">${escapeHtml(t.asset)}</td>
+      <td>${typeBadge}</td>
+      <td class="num">${t.qty.toFixed(6)}</td>
+      <td title="${escapeHtml(t.wallet)}">${t.wallet.slice(0,8)}…</td>
+      <td>
+        <select class="up-action" onchange="onUnpricedActionChange(this)">
+          <option value="ignore"${ov.action==='ignore'?' selected':''}>Ignore</option>
+          <option value="${setAction}"${ov.action===setAction?' selected':''}>${setLabel}</option>
+          <option value="${zeroAction}"${ov.action===zeroAction?' selected':''}>${zeroLabel}</option>
+        </select>
+      </td>
+      <td class="num">
+        <input type="number" class="up-value" step="0.01" min="0" value="${ov.basisUsd || ''}" placeholder="0.00" style="${valueInputDisplay}">
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function onUnpricedActionChange(selectEl) {
+  const tr = selectEl.closest('tr');
+  const valueInput = tr.querySelector('.up-value');
+  if (selectEl.value === 'set_basis' || selectEl.value === 'set_proceeds') {
+    valueInput.style.display = '';
+    valueInput.focus();
+  } else {
+    valueInput.style.display = 'none';
+  }
+}
+
+// Helper: re-run pricing override pass + FIFO with currently saved overrides.
+// Used by both applyOverridesAndRerun and the bulk action buttons so they share logic.
+function rerunPipelineWithCurrentOverrides() {
+  // Reset rows that were previously affected by overrides so the re-run is clean.
+  // We use FLAGS (unpricedOverrideApplied, appliedOverride) as the discriminator
+  // rather than note regex matching, because note text was a fragile signal that
+  // caused Phase 4 rows to be misclassified as Phase 3 rows during cleanup.
+  STATE.rawTxs.forEach(t => {
+    // Phase 3 rows: were unpriced before the override, the override SET their price.
+    // We need to clear usdPrice/usdValue so applyUnpricedOverrides re-derives them.
+    if (t.unpricedOverrideApplied) {
+      t.usdPrice = null;
+      t.usdValue = null;
+      t.status = 'pending';
+      t.note = '';
+      delete t.appliedOverride;
+      delete t.unpricedOverrideApplied;
+      return;
+    }
+    // Phase 4 rows: had a real CryptoCompare/swap-pair price, the override added BASIS.
+    // Preserve the price; just clear the FIFO-applied state so re-run is clean.
+    if (t.appliedOverride) {
+      t.status = 'pending';
+      t.note = '';
+      delete t.appliedOverride;
+      return;
+    }
+    // Rows previously flagged as orphan disposals — reset so FIFO can retry them with
+    // possibly new override state.
+    if (t.direction === 'out' && t.status === 'review' && /Missing cost basis/.test(t.note || '')) {
+      t.status = 'pending';
+      t.note = '';
+    }
+  });
+
+  // Re-run pricing override pass + final cleanup + FIFO
+  applyUnpricedOverrides(STATE.rawTxs);
+  STATE.rawTxs.filter(t => t.status !== 'internal' && t.usdPrice == null).forEach(t => {
+    t.status = 'review';
+    t.note = t.isSwap ? 'DEX swap — unknown token, manual review required' : 'Unknown token — not in known-asset list';
+  });
+  STATE.gains = runFIFO(STATE.rawTxs);
+  const taxYear = parseInt(document.getElementById('taxYear').value);
+  renderResults(taxYear);
+}
+
+function applyOverridesAndRerun() {
+  // Collect overrides from BOTH panels (orphan disposal panel + unpriced panel)
+  const newOverrides = loadBasisOverrides();
+  let changed = 0;
+  const invalidRows = [];  // collect rows where user selected Set basis/proceeds without entering a value
+
+  // Panel 1: orphan disposal overrides (Phase 4)
+  document.querySelectorAll('#overrideTable tbody tr[data-key]').forEach(tr => {
+    const key = tr.getAttribute('data-key');
+    const action = tr.querySelector('.ov-action').value;
+    const basisStr = tr.querySelector('.ov-basis').value.trim();
+    if (action === 'ignore') {
+      if (newOverrides[key]) { delete newOverrides[key]; changed++; }
+    } else if (action === 'set_basis') {
+      const basis = parseFloat(basisStr);
+      if (isNaN(basis) || basis < 0) {
+        invalidRows.push({ panel: 'Orphan disposals', key });
+        return;
+      }
+      newOverrides[key] = { action: 'set_basis', basisUsd: basis, ts: Date.now() };
+      changed++;
+    } else if (action === 'zero_basis') {
+      newOverrides[key] = { action: 'zero_basis', basisUsd: 0, ts: Date.now() };
+      changed++;
+    }
+  });
+
+  // Panel 2: unpriced transaction overrides (Phase 3)
+  document.querySelectorAll('#unpricedTable tbody tr[data-key]').forEach(tr => {
+    const key = tr.getAttribute('data-key');
+    const action = tr.querySelector('.up-action').value;
+    const valueStr = tr.querySelector('.up-value').value.trim();
+    if (action === 'ignore') {
+      if (newOverrides[key]) { delete newOverrides[key]; changed++; }
+    } else if (action === 'set_basis' || action === 'set_proceeds') {
+      const value = parseFloat(valueStr);
+      if (isNaN(value) || value < 0) {
+        invalidRows.push({ panel: 'Unpriced transactions', key });
+        return;
+      }
+      newOverrides[key] = { action, basisUsd: value, ts: Date.now() };
+      changed++;
+    } else if (action === 'zero_basis' || action === 'zero_proceeds') {
+      newOverrides[key] = { action, basisUsd: 0, ts: Date.now() };
+      changed++;
+    }
+  });
+
+  // LOUD failure mode: if any rows have Set basis/proceeds with empty values, refuse to save
+  // and tell the user clearly. This prevents the silent-failure trap where the save appears
+  // to do nothing because the basis input was empty/invisible.
+  if (invalidRows.length > 0) {
+    const msg = `${invalidRows.length} row(s) have "Set basis" or "Set proceeds" selected but no dollar value entered.\n\n` +
+      `The Basis $ / Value $ input field appears in the rightmost column when you select Set basis/proceeds. ` +
+      `Either enter a value there, or change the action to Ignore or Zero basis/proceeds.\n\n` +
+      `No changes were saved. Fix the row(s) and click Save & Re-Apply again.`;
+    alert(msg);
+    log(`Save blocked: ${invalidRows.length} row(s) have Set basis/proceeds with no value.`, 'err');
+    return;
+  }
+
+  if (!saveBasisOverrides(newOverrides)) {
+    log('Failed to save overrides — localStorage error.', 'err');
+    return;
+  }
+  log(`Saved ${changed} override change(s). Re-running pricing + FIFO…`, 'info');
+  rerunPipelineWithCurrentOverrides();
+  log('Re-run complete with manual overrides applied.', 'ok');
+}
+
+// Bulk action: zero-basis every visible row in the orphan disposal panel.
+// Useful when the user has many small orphans from inaccessible sources (defunct
+// exchanges, lost exchange access) and wants the IRS-conservative treatment in one click.
+function bulkZeroAllOrphanDisposals() {
+  const visible = document.querySelectorAll('#overrideTable tbody tr[data-key]');
+  if (visible.length === 0) {
+    alert('No visible orphan disposal rows. Lower the "Hide rows under $" threshold to see more rows.');
+    return;
+  }
+  const proceed = confirm(
+    `Set ${visible.length} visible orphan disposal row(s) to Zero basis?\n\n` +
+    `This treats the full proceeds as 100% gain (IRS-conservative — maximum tax). ` +
+    `Use this when you can't reconstruct cost basis from your records (e.g. inaccessible ` +
+    `exchange history). All overrides are reversible — you can change individual rows back later.\n\n` +
+    `Note: this only affects rows currently visible above the dollar threshold. ` +
+    `Rows below the threshold are not touched.`
+  );
+  if (!proceed) return;
+
+  const newOverrides = loadBasisOverrides();
+  let count = 0;
+  visible.forEach(tr => {
+    const key = tr.getAttribute('data-key');
+    newOverrides[key] = { action: 'zero_basis', basisUsd: 0, ts: Date.now() };
+    count++;
+  });
+  if (!saveBasisOverrides(newOverrides)) {
+    log('Failed to save bulk overrides — localStorage error.', 'err');
+    return;
+  }
+  log(`Bulk-applied zero basis to ${count} visible orphan disposal row(s). Re-running…`, 'info');
+  rerunPipelineWithCurrentOverrides();
+  log('Bulk update complete.', 'ok');
+}
+
+// Bulk action: zero-basis/zero-proceeds every visible row in the unpriced panel.
+// Direction-aware: receipts get zero basis, disposals get zero proceeds.
+function bulkZeroAllUnpriced() {
+  const visible = document.querySelectorAll('#unpricedTable tbody tr[data-key]');
+  if (visible.length === 0) {
+    alert('No unpriced rows to zero out.');
+    return;
+  }
+  const proceed = confirm(
+    `Set ${visible.length} unpriced row(s) to Zero?\n\n` +
+    `Receipts will get Zero basis (future disposals = 100% gain — IRS-conservative). ` +
+    `Disposals will get Zero proceeds (treats as if you abandoned the asset, full basis becomes loss).\n\n` +
+    `All overrides are reversible. Use this for dust or rows you can't reconstruct.`
+  );
+  if (!proceed) return;
+
+  const newOverrides = loadBasisOverrides();
+  let count = 0;
+  visible.forEach(tr => {
+    const key = tr.getAttribute('data-key');
+    const direction = tr.getAttribute('data-direction');
+    const action = direction === 'in' ? 'zero_basis' : 'zero_proceeds';
+    newOverrides[key] = { action, basisUsd: 0, ts: Date.now() };
+    count++;
+  });
+  if (!saveBasisOverrides(newOverrides)) {
+    log('Failed to save bulk overrides — localStorage error.', 'err');
+    return;
+  }
+  log(`Bulk-applied zero to ${count} unpriced row(s). Re-running…`, 'info');
+  rerunPipelineWithCurrentOverrides();
+  log('Bulk update complete.', 'ok');
+}
+
+function explorerTokenUrl(chain, assetKey) {
+  if (!assetKey || assetKey === 'native') return null;
+  if (chain === 'sol') return `https://solscan.io/token/${assetKey}`;
+  if (chain === 'eth') return `https://etherscan.io/token/${assetKey}`;
+  if (chain === 'bsc') return `https://bscscan.com/token/${assetKey}`;
+  return null;
+}
+function explorerTxUrl(chain, txHash) {
+  if (!txHash) return null;
+  if (chain === 'sol') return `https://solscan.io/tx/${txHash}`;
+  if (chain === 'eth') return `https://etherscan.io/tx/${txHash}`;
+  if (chain === 'bsc') return `https://bscscan.com/tx/${txHash}`;
+  return null;
+}
+
+function renderTxTable() {
+  const tbody = document.querySelector('#txTable tbody');
+  const fStatus = document.getElementById('filterStatus').value;
+  const fChain = document.getElementById('filterChain').value;
+  const fType = document.getElementById('filterType').value;
+  const rows = STATE.rawTxs
+    .filter(t => !fStatus || t.status === fStatus)
+    .filter(t => !fChain || t.chain === fChain)
+    .filter(t => !fType || t.type === fType)
+    .sort((a,b) => b.ts - a.ts)
+    .slice(0, 500);
+  tbody.innerHTML = rows.map(t => {
+    const badge = t.status === 'ok' ? '<span class="badge badge-ok" title="Successfully priced and included">OK</span>'
+      : t.status === 'internal' ? '<span class="badge badge-muted" title="Non-taxable internal transfer">Internal</span>'
+      : '<span class="badge badge-warn" title="Needs manual review">Review</span>';
+    // Asset cell: clickable link to block explorer token page + full address in tooltip
+    const tokenUrl = explorerTokenUrl(t.chain, t.assetKey);
+    const assetCell = tokenUrl
+      ? `<a href="${tokenUrl}" target="_blank" rel="noopener" title="${escapeHtml(t.assetKey)} — click to view on explorer" style="color:var(--accent);text-decoration:none;">${escapeHtml(t.asset)} ↗</a>`
+      : escapeHtml(t.asset);
+    // Tx hash link: show explorer icon in date cell
+    const txUrl = explorerTxUrl(t.chain, t.txHash);
+    const dateCell = txUrl
+      ? `${t.date} <a href="${txUrl}" target="_blank" rel="noopener" title="View transaction ${t.txHash}" style="color:var(--muted);text-decoration:none;font-size:10px;">🔗</a>`
+      : t.date;
+    return `<tr>
+      <td>${dateCell}</td><td>${t.chain.toUpperCase()}</td>
+      <td title="${escapeHtml(t.wallet)}">${t.wallet.slice(0,8)}…</td>
+      <td>${t.type}${t.isSwap ? ' 🔄' : ''}</td>
+      <td>${assetCell}</td>
+      <td class="num">${t.qty.toFixed(6)}</td>
+      <td class="num">${t.usdPrice != null ? '$'+t.usdPrice.toFixed(4) : '—'}</td>
+      <td class="num">${t.usdValue != null ? '$'+t.usdValue.toFixed(2) : '—'}</td>
+      <td>${badge}</td><td>${escapeHtml(t.note || '')}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderGainsTable(gains) {
+  const tbody = document.querySelector('#gainsTable tbody');
+  tbody.innerHTML = gains.map(g => `
+    <tr>
+      <td>${escapeHtml(g.asset)}</td>
+      <td class="num">${g.qty.toFixed(6)}</td>
+      <td>${g.acquiredDate}</td><td>${g.soldDate}</td>
+      <td class="num">$${g.basis.toFixed(2)}</td>
+      <td class="num">$${g.proceeds.toFixed(2)}</td>
+      <td class="num" style="color:${g.gain>=0?'var(--ok)':'var(--err)'}">$${g.gain.toFixed(2)}</td>
+      <td>${g.term === 'long' ? 'Long' : 'Short'}</td>
+    </tr>
+  `).join('');
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ---------- CSV EXPORT ----------
+function toCSV(rows, headers) {
+  const esc = v => {
+    if (v == null) return '';
+    const s = String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  };
+  return headers.join(',') + '\n' + rows.map(r => headers.map(h => esc(r[h])).join(',')).join('\n');
+}
+function download(filename, content) {
+  const blob = new Blob([content], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+function export8949() {
+  const taxYear = parseInt(document.getElementById('taxYear').value);
+  const yStart = new Date(`${taxYear}-01-01`).getTime();
+  const yEnd = new Date(`${taxYear+1}-01-01`).getTime();
+  const gains = STATE.gains.filter(g => {
+    const t = new Date(g.soldDate).getTime();
+    return t >= yStart && t < yEnd;
+  });
+  const rows = gains.map(g => {
+    // Prefix manual-override matches so a CPA reviewing the 8949 can immediately
+    // spot which rows used a user-attested basis vs. derived from on-chain history.
+    let desc = `${g.qty.toFixed(8)} ${g.asset}`;
+    if (g.manual) {
+      const tag = g.manualNote && g.manualNote.includes('Zero') ? '[ZERO BASIS]' : '[MANUAL BASIS]';
+      desc = `${tag} ${desc}`;
+    }
+    return {
+      'Description': desc,
+      'Date Acquired': g.acquiredDate,
+      'Date Sold': g.soldDate,
+      'Proceeds': g.proceeds.toFixed(2),
+      'Cost Basis': g.basis.toFixed(2),
+      'Gain/Loss': g.gain.toFixed(2),
+      'Term': g.term === 'long' ? 'Long-Term' : 'Short-Term',
+      'Box': g.term === 'long' ? 'F' : 'C',
+    };
+  });
+  download(`form_8949_${taxYear}.csv`, toCSV(rows, ['Description','Date Acquired','Date Sold','Proceeds','Cost Basis','Gain/Loss','Term','Box']));
+}
+function exportRaw() {
+  const rows = STATE.rawTxs.map(t => ({
+    date: t.date, chain: t.chain, wallet: t.wallet, txHash: t.txHash,
+    type: t.type, direction: t.direction, asset: t.asset, assetKey: t.assetKey,
+    qty: t.qty, usdPrice: t.usdPrice, usdValue: t.usdValue,
+    fromAddr: t.fromAddr, toAddr: t.toAddr, status: t.status, note: t.note,
+  }));
+  download('raw_transactions.csv', toCSV(rows, ['date','chain','wallet','txHash','type','direction','asset','assetKey','qty','usdPrice','usdValue','fromAddr','toAddr','status','note']));
+}
+function exportReview() {
+  const rows = STATE.rawTxs.filter(t => t.status === 'review').map(t => ({
+    date: t.date, chain: t.chain, wallet: t.wallet, txHash: t.txHash,
+    type: t.type, asset: t.asset, assetKey: t.assetKey, qty: t.qty,
+    explorerUrl: explorerTokenUrl(t.chain, t.assetKey) || '',
+    txUrl: explorerTxUrl(t.chain, t.txHash) || '',
+    note: t.note,
+  }));
+  download('needs_review.csv', toCSV(rows, ['date','chain','wallet','txHash','type','asset','assetKey','qty','explorerUrl','txUrl','note']));
+}
+
+// ---------- TURBOTAX CUSTOM CSV EXPORT ----------
+// TurboTax's Custom CSV import format wants RAW transactions (one row per blockchain
+// tx, with sent/received pairs) and computes its own gain/loss using its own FIFO.
+//
+// Our raw_transactions data is atomized (one row per token transfer), so we need to
+// GROUP by txHash and merge into TurboTax's pair format.
+//
+// Manual basis overrides flow through as SYNTHETIC Buy rows (USD → asset) dated
+// 1 day before each disposal. Without this, TurboTax would re-run FIFO from scratch
+// and the user's manual basis work would be lost.
+//
+// Format per template (Custom_CSV_Template.csv from TurboTax):
+//   Date, Type, Sent Asset, Sent Amount, Received Asset, Received Amount,
+//   Fee Asset, Fee Amount, Market Value Currency, Market Value, Description,
+//   Transaction Hash, Transaction ID
+function exportTurboTax() {
+  // Group raw transactions by txHash (excluding internal transfers and rows w/o txHash)
+  const byTxHash = new Map();
+  for (const tx of STATE.rawTxs) {
+    if (tx.status === 'internal') continue;
+    if (!tx.txHash) continue;
+    if (!byTxHash.has(tx.txHash)) byTxHash.set(tx.txHash, []);
+    byTxHash.get(tx.txHash).push(tx);
+  }
+
+  const rows = [];
+  let skippedUnpriced = 0;
+
+  for (const [txHash, group] of byTxHash) {
+    // Filter to priced rows only — TurboTax needs market values to do its job
+    const priced = group.filter(t => t.usdValue != null);
+    if (priced.length === 0) { skippedUnpriced++; continue; }
+
+    const ins  = priced.filter(t => t.direction === 'in').sort((a,b) => (b.usdValue||0) - (a.usdValue||0));
+    const outs = priced.filter(t => t.direction === 'out').sort((a,b) => (b.usdValue||0) - (a.usdValue||0));
+
+    let type, sentAsset = '', sentAmount = '', recvAsset = '', recvAmount = '', marketValue = '';
+    let feeAsset = '', feeAmount = '';
+
+    if (outs.length > 0 && ins.length > 0) {
+      // Convert: crypto-to-crypto swap
+      type = 'Convert';
+      const mainSent = outs[0];
+      const mainRecv = ins[0];
+      sentAsset = mainSent.asset;
+      sentAmount = mainSent.qty.toFixed(8);
+      recvAsset = mainRecv.asset;
+      recvAmount = mainRecv.qty.toFixed(8);
+      marketValue = mainSent.usdValue.toFixed(2);
+      // Aggregate any remaining outs of the same canonical asset as fee (typically gas)
+      const otherOuts = outs.slice(1).filter(t =>
+        (t.priceId && t.priceId === mainSent.priceId) ||
+        (!t.priceId && !mainSent.priceId && t.assetKey === mainSent.assetKey)
+      );
+      if (otherOuts.length > 0) {
+        feeAsset = otherOuts[0].asset;
+        feeAmount = otherOuts.reduce((s,t) => s + t.qty, 0).toFixed(8);
+      }
+    } else if (outs.length > 0) {
+      // Pure send. If ALL rows are Phase 3 unpriced overrides (the user attested
+      // proceeds for an otherwise-unpriced disposal), upgrade to Sale (asset → USD)
+      // so TurboTax's FIFO treats this as a taxable disposal with the user-attested
+      // proceeds. Otherwise it's a non-taxable Withdrawal.
+      const main = outs[0];
+      const allPhase3 = outs.every(t => t.unpricedOverrideApplied);
+      if (allPhase3) {
+        const ov = main.appliedOverride;
+        type = 'Sale';
+        sentAsset = main.asset;
+        sentAmount = outs.reduce((s,t) => s + t.qty, 0).toFixed(8);
+        recvAsset = 'USD';
+        const totalProceeds = outs.reduce((s,t) => s + t.usdValue, 0);
+        recvAmount = totalProceeds.toFixed(2);
+        marketValue = totalProceeds.toFixed(2);
+      } else {
+        type = 'Withdrawal';
+        sentAsset = main.asset;
+        sentAmount = main.qty.toFixed(8);
+        marketValue = main.usdValue.toFixed(2);
+      }
+    } else {
+      // Pure receive. If ALL rows are Phase 3 unpriced overrides (the user attested
+      // basis for an orphan acquisition), upgrade to Buy (USD → asset) so TurboTax's
+      // FIFO treats it as a real acquisition with the user-attested basis. Otherwise
+      // it's a non-taxable Deposit (which doesn't establish basis in TurboTax).
+      const main = ins[0];
+      const allPhase3 = ins.every(t => t.unpricedOverrideApplied);
+      if (allPhase3) {
+        type = 'Buy';
+        sentAsset = 'USD';
+        const totalBasis = ins.reduce((s,t) => s + t.usdValue, 0);
+        sentAmount = totalBasis.toFixed(2);
+        recvAsset = main.asset;
+        recvAmount = ins.reduce((s,t) => s + t.qty, 0).toFixed(8);
+        marketValue = totalBasis.toFixed(2);
+      } else {
+        type = 'Deposit';
+        recvAsset = main.asset;
+        recvAmount = main.qty.toFixed(8);
+        marketValue = main.usdValue.toFixed(2);
+      }
+    }
+
+    const ts = group[0].ts;
+    const d = new Date(ts);
+    const dateStr = `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const chain = group[0].chain.toUpperCase();
+    // Tag Phase 3 rows in Description so a CPA can spot them in the import preview
+    let description = `${chain} ${type.toLowerCase()}`;
+    if (type === 'Buy' || type === 'Sale') {
+      const sampleOv = (type === 'Sale' ? outs[0] : ins[0]).appliedOverride;
+      const tag = (sampleOv && (sampleOv.action === 'zero_basis' || sampleOv.action === 'zero_proceeds'))
+        ? '[ZERO]' : '[MANUAL]';
+      description = `${tag} ${chain} ${type === 'Buy' ? 'orphan receipt' : 'unpriced disposal'} (user-attested value)`;
+    }
+
+    rows.push({
+      'Date': dateStr,
+      'Type': type,
+      'Sent Asset': sentAsset,
+      'Sent Amount': sentAmount,
+      'Received Asset': recvAsset,
+      'Received Amount': recvAmount,
+      'Fee Asset': feeAsset,
+      'Fee Amount': feeAmount,
+      'Market Value Currency': 'USD',
+      'Market Value': marketValue,
+      'Description': description,
+      'Transaction Hash': txHash,
+      'Transaction ID': '',
+      '_sortTs': ts,
+    });
+  }
+
+  // Synthetic Buy rows from manual basis overrides — ONLY for overrides that were
+  // ACTUALLY APPLIED during the current FIFO run (tx.appliedOverride is set).
+  // Stale overrides from previous sessions where FIFO no longer needs them don't
+  // pollute the export. Multiple disposal rows sharing the same override key (e.g.
+  // a Solana tx with several SOL outflows) collapse into ONE synthetic Buy whose
+  // received amount equals the sum of all rows in the group.
+  const groupedByOverride = {};
+  for (const tx of STATE.rawTxs) {
+    if (tx.direction !== 'out') continue;
+    if (!tx.appliedOverride) continue;
+    const k = getOverrideKey(tx);
+    if (!groupedByOverride[k]) {
+      groupedByOverride[k] = { rows: [], ov: tx.appliedOverride, asset: tx.asset, txHash: tx.txHash };
+    }
+    groupedByOverride[k].rows.push(tx);
+  }
+
+  let syntheticCount = 0;
+  for (const [ovKey, group] of Object.entries(groupedByOverride)) {
+    const ov = group.ov;
+    const totalQty = group.rows.reduce((s, t) => s + t.qty, 0);
+    const totalBasis = ov.action === 'zero_basis' ? 0 : (parseFloat(ov.basisUsd) || 0);
+    // Use the earliest disposal ts in the group, dated 1 day before
+    const earliestTs = Math.min(...group.rows.map(t => t.ts));
+    const synthTs = earliestTs - 86400000;
+    const d = new Date(synthTs);
+    const dateStr = `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()} 00:00`;
+    const tag = ov.action === 'zero_basis' ? '[ZERO BASIS]' : '[MANUAL BASIS]';
+
+    rows.push({
+      'Date': dateStr,
+      'Type': 'Buy',
+      'Sent Asset': 'USD',
+      'Sent Amount': totalBasis.toFixed(2),
+      'Received Asset': group.asset,
+      'Received Amount': totalQty.toFixed(8),
+      'Fee Asset': '',
+      'Fee Amount': '',
+      'Market Value Currency': 'USD',
+      'Market Value': totalBasis.toFixed(2),
+      'Description': `${tag} Synthetic acquisition for tax basis attribution (${group.rows.length} disposal row${group.rows.length > 1 ? 's' : ''})`,
+      'Transaction Hash': '',
+      'Transaction ID': `manual-${ovKey.slice(0,16)}`,
+      '_sortTs': synthTs,
+    });
+    syntheticCount++;
+  }
+
+  // Sort all rows chronologically (TurboTax FIFO needs this)
+  rows.sort((a,b) => a._sortTs - b._sortTs);
+  // Strip the internal sort key before export
+  rows.forEach(r => delete r._sortTs);
+
+  const headers = ['Date','Type','Sent Asset','Sent Amount','Received Asset','Received Amount','Fee Asset','Fee Amount','Market Value Currency','Market Value','Description','Transaction Hash','Transaction ID'];
+  download('turbotax_import.csv', toCSV(rows, headers));
+  log(`TurboTax CSV: ${rows.length} rows exported (${syntheticCount} synthetic basis rows from manual overrides${skippedUnpriced > 0 ? `, ${skippedUnpriced} unpriced txs skipped` : ''}).`, 'ok');
+}
+
+// ---------- CONFIG SAVE/LOAD ----------
+function saveConfig() {
+  const cfg = {
+    taxYear: document.getElementById('taxYear').value,
+    ethKey: document.getElementById('ethKey').value,
+    bscKey: document.getElementById('bscKey').value,
+    solKey: document.getElementById('solKey').value,
+    ccKey: document.getElementById('ccKey').value,
+    addresses: document.getElementById('addresses').value,
+  };
+  localStorage.setItem(CACHE_PREFIX + 'config', JSON.stringify(cfg));
+  log('Config saved to browser localStorage.', 'ok');
+}
+function loadConfig() {
+  const raw = localStorage.getItem(CACHE_PREFIX + 'config');
+  if (!raw) { log('No saved config.', 'warn'); return; }
+  const cfg = JSON.parse(raw);
+  document.getElementById('taxYear').value = cfg.taxYear || 2025;
+  document.getElementById('ethKey').value = cfg.ethKey || '';
+  document.getElementById('bscKey').value = cfg.bscKey || '';
+  document.getElementById('solKey').value = cfg.solKey || '';
+  // Migrate: old configs used cgKey (CoinGecko); new uses ccKey (CryptoCompare)
+  document.getElementById('ccKey').value = cfg.ccKey || '';
+  document.getElementById('addresses').value = cfg.addresses || '';
+  log('Config loaded.', 'ok');
+}
+
+// ---------- WIRE UP ----------
+document.getElementById('runBtn').onclick = run;
+document.getElementById('clearCacheBtn').onclick = () => {
+  // Count before clearing so we can show the user what happened
+  let count = 0;
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(CACHE_PREFIX) && k !== CACHE_PREFIX + 'config') count++;
+  }
+  cacheClear();
+  log(`Cache cleared: removed ${count} entries (config preserved).`, 'ok');
+};
+document.getElementById('saveConfigBtn').onclick = saveConfig;
+document.getElementById('loadConfigBtn').onclick = loadConfig;
+document.getElementById('export8949').onclick = export8949;
+document.getElementById('exportTurboTax').onclick = exportTurboTax;
+document.getElementById('exportRaw').onclick = exportRaw;
+document.getElementById('exportReview').onclick = exportReview;
+
+// Test CryptoCompare Key button — makes direct calls to verify the key works
+document.getElementById('testCcBtn').onclick = async () => {
+  const ccKey = document.getElementById('ccKey').value.trim();
+  log(`Testing CryptoCompare ${ccKey ? 'API key' : '(no key)'}…`, 'info');
+  if (ccKey) {
+    log(`  Key length: ${ccKey.length} chars. Starts with: "${ccKey.slice(0,6)}" Ends with: "${ccKey.slice(-4)}"`, 'info');
+    if (ccKey.length < 40) {
+      log(`  ⚠ Key looks short (${ccKey.length} chars). CryptoCompare keys are typically 64 hex chars. May be truncated.`, 'warn');
+    }
+    if (!/^[a-f0-9]+$/i.test(ccKey)) {
+      log(`  ⚠ Key contains non-hex characters. CryptoCompare keys are hexadecimal only (0-9, a-f).`, 'warn');
+    }
+  }
+
+  // Test 1: simple price endpoint (no auth required but accepts auth)
+  log(`  [1/2] Testing /data/price (BTC current)…`, 'info');
+  try {
+    const headers = {};
+    if (ccKey) headers['Authorization'] = `Apikey ${ccKey}`;
+    const r = await fetch('https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD', { headers });
+    log(`    HTTP ${r.status} ${r.statusText}`, r.ok ? 'info' : 'err');
+    if (!r.ok) {
+      const body = await r.text();
+      log(`    Response: ${body.slice(0, 300)}`, 'err');
+    } else {
+      const data = await r.json();
+      if (data.USD) {
+        log(`    ✓ BTC current price: $${data.USD.toFixed(2)}`, 'ok');
+      } else if (data.Response === 'Error') {
+        log(`    Response Error: ${data.Message}`, 'err');
+      } else {
+        log(`    Unexpected response: ${JSON.stringify(data).slice(0, 200)}`, 'warn');
+      }
+    }
+  } catch (e) {
+    log(`    Network error: ${e.message}`, 'err');
+  }
+
+  // Test 2: histoday endpoint for an OLD date (the one that matters for tax use)
+  log(`  [2/2] Testing /data/v2/histoday for SOL on 2024-04-03 (an old date CoinGecko Demo blocks)…`, 'info');
+  try {
+    // 2024-04-03 23:59:59 UTC
+    const ts = Math.floor(Date.UTC(2024, 3, 3, 23, 59, 59) / 1000);
+    const headers = {};
+    if (ccKey) headers['Authorization'] = `Apikey ${ccKey}`;
+    const r = await fetch(`https://min-api.cryptocompare.com/data/v2/histoday?fsym=SOL&tsym=USD&limit=1&toTs=${ts}`, { headers });
+    log(`    HTTP ${r.status} ${r.statusText}`, r.ok ? 'info' : 'err');
+    if (!r.ok) {
+      const body = await r.text();
+      log(`    Response body: ${body.slice(0, 300)}`, 'err');
+      if (r.status === 401 || r.status === 403) {
+        log(`    → Key rejected. Double-check you copied the full key from the CryptoCompare dashboard.`, 'err');
+      }
+      return;
+    }
+    const data = await r.json();
+    if (data.Response !== 'Success') {
+      log(`    Response Error: ${data.Message || JSON.stringify(data).slice(0, 200)}`, 'err');
+      return;
+    }
+    const entries = data.Data && data.Data.Data;
+    if (!entries || entries.length === 0) {
+      log(`    No data returned for this date.`, 'warn');
+      return;
+    }
+    const last = entries[entries.length - 1];
+    if (last && last.close > 0) {
+      log(`    ✓ SUCCESS — SOL close on 2024-04-03 was $${last.close.toFixed(2)}`, 'ok');
+      log(`  ALL TESTS PASSED. Clear Cache and run the tool — historical pricing should work now.`, 'ok');
+    } else {
+      log(`    Got entries but no valid close price. Raw: ${JSON.stringify(last).slice(0, 200)}`, 'warn');
+    }
+  } catch (e) {
+    log(`    Network error: ${e.message}`, 'err');
+  }
+};
+
+['filterStatus','filterChain','filterType'].forEach(id =>
+  document.getElementById(id).addEventListener('change', renderTxTable));
+window.addEventListener('load', () => {
+  if (localStorage.getItem(CACHE_PREFIX + 'config')) loadConfig();
+});
+</script>
+
+</body>
+</html>
