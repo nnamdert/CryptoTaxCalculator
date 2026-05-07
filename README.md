@@ -1,3 +1,5 @@
+[![Twitter Follow](https://img.shields.io/twitter/url/https/twitter.com/cloudposse.svg?style=social&label=Follow%20@nnamdert)](https://x.com/nnamdert) 
+
 # Crypto Tax FIFO Calculator
 
 Browser-based crypto tax tool that fetches on-chain transactions, applies FIFO cost basis matching, and exports IRS Form 8949 and TurboTax-compatible CSV files. Single HTML file, 100% client-side — no server, no accounts, no data leaves your browser.
